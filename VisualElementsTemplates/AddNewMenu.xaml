@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="InventorySystem.VisualElementsTemplates.AddNewMenu">
+	<Border
+        Margin="0,12,0,12"
+        Grid.Row="0"
+        x:Name="AddNewMenuDisplay"
+        IsVisible="False"
+        HorizontalOptions="End"
+        Padding="8"
+        BackgroundColor="{AppThemeBinding Light=White, Dark=#242424}"
+        Stroke="{AppThemeBinding Light=#D0D0D0, Dark=#505050}"
+        StrokeShape="RoundRectangle 12">
+
+		<Grid
+                ColumnDefinitions="Auto,Auto"
+                RowDefinitions="Auto, Auto, Auto">
+
+			<Button
+                Grid.Row="0"
+                Grid.Column="0"
+                x:Name="NewItem"
+                Text="Añadir objeto"
+                TextColor="White"
+                BackgroundColor="#cc0000"
+                Clicked="NewItem_Clicked" />
+
+			<Button
+                Grid.Row="0"
+                Grid.Column="1"
+                x:Name="NewPurveyor"
+                Text="Añadir proveedor"
+                TextColor="White"
+                BackgroundColor="#0000cc"
+                Clicked="NewPurveyor_Clicked" />
+
+			<Button
+                Grid.Row="1"
+                x:Name="NewOrder"
+                Text="Nuevo pedido"
+                TextColor="White"
+                BackgroundColor="#cccc00"
+                HorizontalOptions="Fill"
+                Clicked="NewOrder_Clicked" />
+
+			<Button
+                Grid.Row="2"
+                x:Name="NewSale"
+                Text="Nueva venta"
+                TextColor="White"
+                BackgroundColor="#00cc00"
+                HorizontalOptions="Fill"
+                Clicked="NewSale_Clicked" />
+
+		</Grid>
+	</Border>
+</ContentView>

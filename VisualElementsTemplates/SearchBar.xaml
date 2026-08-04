@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="InventorySystem.VisualElementsTemplates.SearchBar">
+	<SearchBar        
+        x:Name="InventorySearchBar"
+        Margin="20,2,20,12"
+        Placeholder="Buscar..."
+        TextChanged="InventorySearchBar_TextChanged"
+        ReturnType="Search"/>
+</ContentView>

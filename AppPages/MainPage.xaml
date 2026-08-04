@@ -1,0 +1,46 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage 
+			 xmlns:templates="clr-namespace:InventorySystem.VisualElementsTemplates"
+			 xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="InventorySystem.MainPage"
+			 Shell.NavBarIsVisible="False">
+
+	<Grid
+		RowDefinitions="Auto,*,Auto">
+		<Grid
+			Grid.Row="0">
+			<Border
+			BackgroundColor="#75E843"
+			Opacity="1"
+			HorizontalOptions="Fill"
+			Padding="28">
+			</Border>
+			<Label
+				Margin="16,2,0,0"
+				VerticalOptions="Center"
+				HorizontalOptions="Start"
+				FontAttributes="Bold"
+				FontSize="Large"
+				Text="Inicio"/>
+		</Grid>
+		<Grid
+			Grid.Row="1">
+			<templates:HomePageContainer
+				VerticalOptions="Center"
+				IsVisible="False">
+			</templates:HomePageContainer>
+			<Label
+				Text="Aún no hay elementos por mostrar"
+				VerticalOptions="Center"
+				HorizontalOptions="Center"
+				IsVisible="True"
+			/>
+		</Grid>
+
+		<templates:Dock
+					Grid.Row="3"
+					VerticalOptions="End">
+		</templates:Dock>
+	</Grid>
+</ContentPage>

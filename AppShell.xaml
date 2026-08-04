@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<Shell
+    x:Class="InventorySystem.AppShell"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:local="clr-namespace:InventorySystem"
+    xmlns:pages="clr-namespace:InventorySystem.AppPages"
+    Title="Inventory">
+
+
+	<ShellContent
+        ContentTemplate="{DataTemplate pages:LoadingScreen}"
+        Route="LoadingScreen">
+    </ShellContent>
+	<ShellContent
+        ContentTemplate="{DataTemplate local:MainPage}"
+        Route="MainPage">
+	</ShellContent>
+	<ShellContent
+        ContentTemplate="{DataTemplate pages:InventoryPage}"
+        Route="InventoryPage">
+    </ShellContent>
+	<ShellContent
+        ContentTemplate="{DataTemplate pages:NewOrderPage}"
+        Route="NewOrderPage">
+	</ShellContent>
+	<ShellContent
+        ContentTemplate="{DataTemplate pages:NewPurveyorPage}"
+        Route="NewPurveyorPage">
+	</ShellContent>
+	<ShellContent
+        ContentTemplate="{DataTemplate pages:NewSalePage}"
+        Route="NewSalePage">
+	</ShellContent>
+	<ShellContent
+        ContentTemplate="{DataTemplate pages:NewItemPage}"
+        Route="NewItemPage">
+	</ShellContent>
+
+</Shell>
