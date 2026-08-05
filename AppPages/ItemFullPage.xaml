@@ -29,17 +29,17 @@
                             </Picker>
                         </VerticalStackLayout>
                         <VerticalStackLayout Grid.Column="1" Spacing="4">
-                            <Label Text="Proveedor — Opcional" Style="{StaticResource FieldLabel}" />
+                            <Label Text="Proveedor (opcional)" Style="{StaticResource FieldLabel}" />
                             <Picker x:Name="LotSupplierPicker" Style="{StaticResource FormPicker}" Title="Selecciona un proveedor" />
                         </VerticalStackLayout>
                     </Grid>
                     <Grid ColumnDefinitions="*,*" ColumnSpacing="18">
                         <VerticalStackLayout Spacing="4">
-                            <Label Text="Código de lote — Opcional" Style="{StaticResource FieldLabel}" />
+                            <Label Text="Código de lote (opcional)" Style="{StaticResource FieldLabel}" />
                             <Entry x:Name="LotCodeEntry" Style="{StaticResource FormEntry}" />
                         </VerticalStackLayout>
                         <VerticalStackLayout Grid.Column="1" Spacing="4">
-                            <Label Text="Cantidad recibida — Opcional" Style="{StaticResource FieldLabel}" />
+                            <Label Text="Cantidad recibida (opcional)" Style="{StaticResource FieldLabel}" />
                             <Entry x:Name="LotQuantityEntry" Style="{StaticResource FormEntry}" Keyboard="Numeric" />
                         </VerticalStackLayout>
                     </Grid>
@@ -49,7 +49,7 @@
                             <DatePicker x:Name="LotExpirationDate" Style="{StaticResource FormDatePicker}" />
                         </VerticalStackLayout>
                         <VerticalStackLayout Grid.Column="1" Spacing="4">
-                            <Label Text="Costo unitario — Opcional" Style="{StaticResource FieldLabel}" />
+                            <Label Text="Costo unitario (opcional)" Style="{StaticResource FieldLabel}" />
                             <Entry x:Name="LotUnitCostEntry" Style="{StaticResource FormEntry}" Keyboard="Numeric" />
                         </VerticalStackLayout>
                     </Grid>
@@ -66,7 +66,7 @@
                         </CollectionView.EmptyView>
                         <CollectionView.ItemTemplate>
                             <DataTemplate>
-                                <Border Style="{StaticResource Card}" Margin="0,3" Padding="11">
+                                <Border Style="{StaticResource ListRow}" Margin="0,3">
                                     <Grid ColumnDefinitions="2*,*,*,*">
                                         <Label Text="{Binding LotCode, StringFormat='Lote {0}'}" FontAttributes="Bold" />
                                         <Label Grid.Column="1" Text="{Binding Quantity, StringFormat='Disponible {0:0.###}'}" />
@@ -96,7 +96,7 @@
                         <Label Text="Conteo físico" Style="{StaticResource SectionTitle}" />
                         <Label Text="Inventario físico *" Style="{StaticResource FieldLabel}" />
                         <Entry x:Name="PhysicalStock" Style="{StaticResource FormEntry}" Keyboard="Numeric" />
-                        <Label Text="Notas — Opcional" Style="{StaticResource FieldLabel}" />
+                        <Label Text="Notas (opcional)" Style="{StaticResource FieldLabel}" />
                         <Entry x:Name="CountNotes" Style="{StaticResource FormEntry}" />
                         <HorizontalStackLayout Spacing="10">
                             <Button Text="Guardar conteo" Style="{StaticResource SecondaryButton}" Clicked="CreateCount_Clicked" />
@@ -109,7 +109,7 @@
 
             <Border Style="{StaticResource Card}">
                 <VerticalStackLayout Spacing="10">
-                    <Label Text="Historial inmutable" Style="{StaticResource SectionTitle}" />
+                    <Label Text="Historial de movimientos" Style="{StaticResource SectionTitle}" />
                     <CollectionView x:Name="MovementList" HeightRequest="300">
                         <CollectionView.ItemTemplate>
                             <DataTemplate>

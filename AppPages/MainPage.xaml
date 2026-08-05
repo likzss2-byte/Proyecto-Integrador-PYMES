@@ -8,7 +8,7 @@
             <Grid ColumnDefinitions="*,Auto">
                 <VerticalStackLayout Spacing="4">
                     <Label Text="Panel de inicio" Style="{StaticResource DesktopPageTitle}" />
-                    <Label Text="Resumen operativo actualizado desde la base de datos local." Style="{StaticResource DesktopPageSubtitle}" />
+                    <Label Text="Existencias, caducidades y pedidos." Style="{StaticResource DesktopPageSubtitle}" />
                 </VerticalStackLayout>
                 <Button Grid.Column="1" Text="Actualizar" Style="{StaticResource SecondaryButton}" Clicked="RefreshDashboard_Clicked" />
             </Grid>
@@ -56,7 +56,7 @@
                             </CollectionView.EmptyView>
                             <CollectionView.ItemTemplate>
                                 <DataTemplate>
-                                    <Border Style="{StaticResource Card}" Padding="11" Margin="0,3">
+                                    <Border Style="{StaticResource ListRow}" Margin="0,3">
                                         <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
                                             <Label Text="{Binding ProductName}" FontAttributes="Bold" />
                                             <Label Grid.Row="1" Text="{Binding Code}" Style="{StaticResource HelperText}" />
@@ -79,7 +79,7 @@
                             </CollectionView.EmptyView>
                             <CollectionView.ItemTemplate>
                                 <DataTemplate>
-                                    <Border Style="{StaticResource Card}" Padding="11" Margin="0,3">
+                                    <Border Style="{StaticResource ListRow}" Margin="0,3">
                                         <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto">
                                             <Label Text="{Binding ProductName}" FontAttributes="Bold" />
                                             <Label Grid.Row="1" Text="{Binding LotCode, StringFormat='Lote: {0}'}" Style="{StaticResource HelperText}" />
@@ -106,7 +106,7 @@
                         </CollectionView.EmptyView>
                         <CollectionView.ItemTemplate>
                             <DataTemplate>
-                                <Border Style="{StaticResource Card}" Padding="11" Margin="0,3">
+                                <Border Style="{StaticResource ListRow}" Margin="0,3">
                                     <Grid ColumnDefinitions="2*,*,*,*">
                                         <Label Text="{Binding ProductName}" FontAttributes="Bold" />
                                         <Label Grid.Column="1" Text="{Binding LotCode, StringFormat='Lote {0}'}" />

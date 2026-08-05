@@ -7,7 +7,7 @@
         <VerticalStackLayout Padding="28,24" Spacing="18" MaximumWidthRequest="980" HorizontalOptions="Center">
             <VerticalStackLayout Spacing="4">
                 <Label Text="Registrar producto" Style="{StaticResource DesktopPageTitle}" />
-                <Label Text="Los campos marcados con * son obligatorios. SKU y código de barras se administran por separado." Style="{StaticResource DesktopPageSubtitle}" />
+                <Label Text="Datos generales y control de inventario." Style="{StaticResource DesktopPageSubtitle}" />
             </VerticalStackLayout>
 
             <Border Style="{StaticResource Card}">
@@ -33,7 +33,7 @@
                             <Label x:Name="SkuErrorLabel" Style="{StaticResource ErrorText}" />
                         </VerticalStackLayout>
                         <VerticalStackLayout Grid.Column="1" Spacing="4">
-                            <Label Text="Código de barras — Opcional" Style="{StaticResource FieldLabel}" />
+                            <Label Text="Código de barras (opcional)" Style="{StaticResource FieldLabel}" />
                             <Entry x:Name="BarcodeEntry" Style="{StaticResource FormEntry}" />
                             <Label x:Name="BarcodeErrorLabel" Style="{StaticResource ErrorText}" />
                         </VerticalStackLayout>
@@ -43,12 +43,12 @@
                             <Label x:Name="NameErrorLabel" Style="{StaticResource ErrorText}" />
                         </VerticalStackLayout>
                         <VerticalStackLayout Grid.Row="1" Grid.Column="1" Margin="0,12,0,0" Spacing="4">
-                            <Label Text="Marca — Opcional" Style="{StaticResource FieldLabel}" />
+                            <Label Text="Marca (opcional)" Style="{StaticResource FieldLabel}" />
                             <Entry x:Name="BrandEntry" Style="{StaticResource FormEntry}" />
                         </VerticalStackLayout>
                     </Grid>
 
-                    <Label Text="Descripción — Opcional" Style="{StaticResource FieldLabel}" />
+                    <Label Text="Descripción (opcional)" Style="{StaticResource FieldLabel}" />
                     <Editor x:Name="DescriptionEntry" Style="{StaticResource FormEditor}" AutoSize="TextChanges" />
 
                     <Grid ColumnDefinitions="*,*" ColumnSpacing="18">
@@ -97,7 +97,7 @@
                             <Label Text="Si el inventario inicial es mayor que cero, la caducidad es obligatoria." Style="{StaticResource HelperText}" />
                             <Grid ColumnDefinitions="*,*" ColumnSpacing="18">
                                 <VerticalStackLayout Spacing="4">
-                                    <Label Text="Código de lote — Opcional" Style="{StaticResource FieldLabel}" />
+                                    <Label Text="Código de lote (opcional)" Style="{StaticResource FieldLabel}" />
                                     <Entry x:Name="InitialLotCodeEntry" Style="{StaticResource FormEntry}" />
                                 </VerticalStackLayout>
                                 <VerticalStackLayout Grid.Column="1" Spacing="4">

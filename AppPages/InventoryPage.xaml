@@ -7,7 +7,7 @@
     <Grid RowDefinitions="Auto,Auto,*,Auto" Padding="28,24,28,0" MaximumWidthRequest="1180" HorizontalOptions="Center">
         <VerticalStackLayout Spacing="4">
             <Label Text="Inventario" Style="{StaticResource DesktopPageTitle}" SemanticProperties.HeadingLevel="Level1" />
-            <Label Text="Busca por nombre, marca, SKU o código de barras y abre un producto para consultar lotes e historial." Style="{StaticResource DesktopPageSubtitle}" />
+            <Label Text="Consulta existencias, lotes e historial." Style="{StaticResource DesktopPageSubtitle}" />
         </VerticalStackLayout>
         <Grid Grid.Row="1" ColumnDefinitions="*,Auto" ColumnSpacing="12" Margin="0,14,0,10">
             <templates:SearchBar x:Name="InventorySearch" />
@@ -19,7 +19,7 @@
             </CollectionView.EmptyView>
             <CollectionView.ItemTemplate>
                 <DataTemplate>
-                    <Border Style="{StaticResource Card}" Margin="0,4" Padding="14">
+                    <Border Style="{StaticResource ListRow}" Margin="0,4" Padding="12">
                         <Grid ColumnDefinitions="2*,*,Auto" RowDefinitions="Auto,Auto">
                             <Label Text="{Binding Name}" FontAttributes="Bold" FontSize="16" />
                             <Label Grid.Row="1" Text="{Binding DisplayCode}" Style="{StaticResource HelperText}" />

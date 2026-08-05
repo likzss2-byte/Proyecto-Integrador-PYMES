@@ -7,14 +7,14 @@
         <VerticalStackLayout Padding="28,24" Spacing="18" MaximumWidthRequest="980" HorizontalOptions="Center">
             <VerticalStackLayout Spacing="4">
                 <Label Text="Entrada directa de inventario" Style="{StaticResource DesktopPageTitle}" />
-                <Label Text="Para mercancía previamente solicitada utiliza Pedidos y recepciones; esta pantalla registra una entrada inmediata." Style="{StaticResource DesktopPageSubtitle}" />
+                <Label Text="Registra mercancía que ya llegó al almacén." Style="{StaticResource DesktopPageSubtitle}" />
             </VerticalStackLayout>
             <Border Style="{StaticResource Card}">
                 <VerticalStackLayout Spacing="14">
-                    <Label Text="Proveedor — Opcional" Style="{StaticResource FieldLabel}" />
+                    <Label Text="Proveedor (opcional)" Style="{StaticResource FieldLabel}" />
                     <Picker x:Name="SupplierPicker" Style="{StaticResource FormPicker}" Title="Selecciona un proveedor" />
 
-                    <Border Style="{StaticResource Card}" BackgroundColor="{AppThemeBinding Light=#F8FAF9, Dark=#26312B}">
+                    <Border Style="{StaticResource FormSection}">
                         <VerticalStackLayout Spacing="12">
                             <Label Text="Agregar producto y lote" Style="{StaticResource SectionTitle}" />
                             <Label Text="Código de barras o SKU *" Style="{StaticResource FieldLabel}" />
@@ -29,7 +29,7 @@
                                     <Entry x:Name="UnitCostEntry" Style="{StaticResource FormEntry}" Keyboard="Numeric" />
                                 </VerticalStackLayout>
                             </Grid>
-                            <Label Text="Código de lote — Opcional" Style="{StaticResource FieldLabel}" />
+                            <Label Text="Código de lote (opcional)" Style="{StaticResource FieldLabel}" />
                             <Entry x:Name="LotCodeEntry" Style="{StaticResource FormEntry}" />
                             <Grid ColumnDefinitions="*,*" ColumnSpacing="18">
                                 <VerticalStackLayout>
@@ -58,7 +58,7 @@
                         </CollectionView.EmptyView>
                         <CollectionView.ItemTemplate>
                             <DataTemplate>
-                                <Border Style="{StaticResource Card}" Margin="0,4" Padding="12">
+                                <Border Style="{StaticResource ListRow}" Margin="0,4">
                                     <Grid ColumnDefinitions="*,Auto">
                                         <VerticalStackLayout>
                                             <Label Text="{Binding DisplayName}" FontAttributes="Bold" />
@@ -71,7 +71,7 @@
                         </CollectionView.ItemTemplate>
                     </CollectionView>
                     <Label x:Name="TotalLabel" Text="Total: $0.00" FontSize="18" FontAttributes="Bold" />
-                    <Label Text="Notas — Opcional" Style="{StaticResource FieldLabel}" />
+                    <Label Text="Notas (opcional)" Style="{StaticResource FieldLabel}" />
                     <Editor x:Name="NotesEntry" Style="{StaticResource FormEditor}" AutoSize="TextChanges" />
                     <Button x:Name="ConfirmEntryButton" Text="Confirmar entrada" Style="{StaticResource PrimaryButton}" HorizontalOptions="Start" Clicked="ConfirmEntry_Clicked" />
                     <Border x:Name="CancellationPanel" Style="{StaticResource ExpiredCard}" IsVisible="False">

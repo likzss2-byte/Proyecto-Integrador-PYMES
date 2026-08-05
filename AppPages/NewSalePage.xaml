@@ -7,7 +7,7 @@
         <VerticalStackLayout Padding="28,24" Spacing="18" MaximumWidthRequest="940" HorizontalOptions="Center">
             <VerticalStackLayout Spacing="4">
                 <Label Text="Venta / salida" Style="{StaticResource DesktopPageTitle}" />
-                <Label Text="Las existencias se descuentan al confirmar y los lotes se consumen por FEFO." Style="{StaticResource DesktopPageSubtitle}" />
+                <Label Text="Captura productos y confirma la salida." Style="{StaticResource DesktopPageSubtitle}" />
             </VerticalStackLayout>
             <Border Style="{StaticResource Card}">
                 <VerticalStackLayout Spacing="14">
@@ -20,7 +20,7 @@
                             <Entry x:Name="QuantityEntry" Style="{StaticResource FormEntry}" Keyboard="Numeric" />
                         </VerticalStackLayout>
                         <VerticalStackLayout Grid.Column="1" Spacing="4">
-                            <Label Text="Precio unitario — Opcional" Style="{StaticResource FieldLabel}" />
+                            <Label Text="Precio unitario (opcional)" Style="{StaticResource FieldLabel}" />
                             <Entry x:Name="UnitPriceEntry" Style="{StaticResource FormEntry}" Keyboard="Numeric" />
                             <Label Text="Vacío utiliza el precio configurado en el producto." Style="{StaticResource HelperText}" />
                         </VerticalStackLayout>
@@ -47,7 +47,7 @@
                         </CollectionView.ItemTemplate>
                     </CollectionView>
                     <Label x:Name="TotalLabel" Text="Total: $0.00" FontSize="18" FontAttributes="Bold" />
-                    <Label Text="Notas — Opcional" Style="{StaticResource FieldLabel}" />
+                    <Label Text="Notas (opcional)" Style="{StaticResource FieldLabel}" />
                     <Editor x:Name="NotesEntry" Style="{StaticResource FormEditor}" AutoSize="TextChanges" />
                     <Border Style="{StaticResource ExpiredCard}">
                         <HorizontalStackLayout Spacing="8">

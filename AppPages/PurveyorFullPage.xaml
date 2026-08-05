@@ -7,7 +7,7 @@
     <Grid RowDefinitions="Auto,Auto,*,Auto" Padding="28,24,28,0" MaximumWidthRequest="1080" HorizontalOptions="Center">
         <VerticalStackLayout Spacing="4">
             <Label Text="Proveedores" Style="{StaticResource DesktopPageTitle}" />
-            <Label Text="Consulta los datos de contacto y la relación con tus compras." Style="{StaticResource DesktopPageSubtitle}" />
+            <Label Text="Directorio de proveedores." Style="{StaticResource DesktopPageSubtitle}" />
         </VerticalStackLayout>
         <SearchBar x:Name="SupplierSearch" Grid.Row="1" Margin="0,14,0,10" Placeholder="Buscar proveedor" TextChanged="SupplierSearch_TextChanged" />
         <CollectionView x:Name="SupplierList" Grid.Row="2" SelectionMode="Single" SelectionChanged="SupplierList_SelectionChanged">
@@ -16,7 +16,7 @@
             </CollectionView.EmptyView>
             <CollectionView.ItemTemplate>
                 <DataTemplate>
-                    <Border Style="{StaticResource Card}" Margin="0,4" Padding="14">
+                    <Border Style="{StaticResource ListRow}" Margin="0,4" Padding="12">
                         <Grid ColumnDefinitions="2*,*,*" RowDefinitions="Auto,Auto">
                             <Label Text="{Binding CompanyName}" FontAttributes="Bold" FontSize="16" />
                             <Label Grid.Row="1" Text="{Binding ContactName}" Style="{StaticResource HelperText}" />
