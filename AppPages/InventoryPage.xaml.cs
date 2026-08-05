@@ -85,4 +85,13 @@ public partial class InventoryPage : ContentPage
             nameof(ItemFullPage),
             new Dictionary<string, object> { ["ProductId"] = product.Id });
     }
+
+    private async void OpenSupplierInventory_Clicked(object? sender, EventArgs e) =>
+        await Shell.Current.GoToAsync("//SupplierInventoryPage");
+
+    private async void OpenBrandInventory_Clicked(object? sender, EventArgs e) =>
+        await Shell.Current.GoToAsync("//BrandInventoryPage");
+
+    private async void OpenOperationalInventory_Clicked(object? sender, EventArgs e) =>
+        await Shell.Current.GoToAsync("//OperationalInventoryPage");
 }

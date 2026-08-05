@@ -30,6 +30,8 @@ public static class MauiProgram
         builder.Services.AddSingleton<BusinessService>();
         builder.Services.AddSingleton<InventoryTransactionService>();
         builder.Services.AddSingleton<InventoryAdjustmentService>();
+        builder.Services.AddSingleton<InventoryCatalogService>();
+        builder.Services.AddSingleton<InventoryCountSessionService>();
         builder.Services.AddSingleton<InventoryLotService>();
         builder.Services.AddSingleton<PurchaseOrderService>();
         builder.Services.AddSingleton<DashboardService>();
@@ -43,6 +45,9 @@ public static class MauiProgram
         builder.Services.AddTransient<LoadingScreen>();
         builder.Services.AddTransient<MainPage>();
         builder.Services.AddTransient<InventoryPage>();
+        builder.Services.AddTransient<SupplierInventoryPage>();
+        builder.Services.AddTransient<BrandInventoryPage>();
+        builder.Services.AddTransient<OperationalInventoryPage>();
         builder.Services.AddTransient<NewItemPage>();
         builder.Services.AddTransient<NewPurveyorPage>();
         builder.Services.AddTransient<NewOrderPage>();

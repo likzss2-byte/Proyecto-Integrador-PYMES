@@ -4,16 +4,26 @@
              xmlns:templates="clr-namespace:InventorySystem.VisualElementsTemplates"
              x:Class="InventorySystem.AppPages.InventoryPage"
              Title="Inventario">
-    <Grid RowDefinitions="Auto,Auto,*,Auto" Padding="28,24,28,0" MaximumWidthRequest="1180" HorizontalOptions="Center">
+    <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" Padding="28,24,28,0" MaximumWidthRequest="1180" HorizontalOptions="Center">
         <VerticalStackLayout Spacing="4">
             <Label Text="Inventario" Style="{StaticResource DesktopPageTitle}" SemanticProperties.HeadingLevel="Level1" />
             <Label Text="Consulta existencias, lotes e historial." Style="{StaticResource DesktopPageSubtitle}" />
         </VerticalStackLayout>
-        <Grid Grid.Row="1" ColumnDefinitions="*,Auto" ColumnSpacing="12" Margin="0,14,0,10">
+        <Border Grid.Row="1" Style="{StaticResource Card}" Margin="0,14,0,0" Padding="14">
+            <VerticalStackLayout Spacing="10">
+                <Label Text="Conteo físico" Style="{StaticResource SectionTitle}" />
+                <Grid ColumnDefinitions="*,*,*" ColumnSpacing="10">
+                    <Button Text="Por proveedor" Style="{StaticResource SecondaryButton}" Clicked="OpenSupplierInventory_Clicked" />
+                    <Button Grid.Column="1" Text="Por marca" Style="{StaticResource SecondaryButton}" Clicked="OpenBrandInventory_Clicked" />
+                    <Button Grid.Column="2" Text="Inventario operativo" Style="{StaticResource PrimaryButton}" Clicked="OpenOperationalInventory_Clicked" />
+                </Grid>
+            </VerticalStackLayout>
+        </Border>
+        <Grid Grid.Row="2" ColumnDefinitions="*,Auto" ColumnSpacing="12" Margin="0,14,0,10">
             <templates:SearchBar x:Name="InventorySearch" />
             <templates:SortButton x:Name="InventorySortButton" Grid.Column="1" SortChanged="InventorySortButton_SortChanged" />
         </Grid>
-        <CollectionView x:Name="InventoryItems" Grid.Row="2" SelectionMode="Single" SelectionChanged="InventoryItems_SelectionChanged">
+        <CollectionView x:Name="InventoryItems" Grid.Row="3" SelectionMode="Single" SelectionChanged="InventoryItems_SelectionChanged">
             <CollectionView.EmptyView>
                 <Label Text="Aún no hay productos por mostrar." HorizontalOptions="Center" VerticalOptions="Center" Style="{StaticResource HelperText}" />
             </CollectionView.EmptyView>
@@ -31,6 +41,6 @@
                 </DataTemplate>
             </CollectionView.ItemTemplate>
         </CollectionView>
-        <templates:Dock Grid.Row="3" IsVisible="{OnPlatform WinUI=False, Default=True}" VerticalOptions="End" />
+        <templates:Dock Grid.Row="4" IsVisible="{OnPlatform WinUI=False, Default=True}" VerticalOptions="End" />
     </Grid>
 </ContentPage>

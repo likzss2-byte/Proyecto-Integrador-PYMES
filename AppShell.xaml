@@ -36,12 +36,28 @@
         ContentTemplate="{DataTemplate local:MainPage}"
         Route="MainPage">
 	</ShellContent>
-	<ShellContent
-        Title="Inventario"
-        Icon="shelf.svg"
-        ContentTemplate="{DataTemplate pages:InventoryPage}"
-        Route="InventoryPage">
-    </ShellContent>
+    <FlyoutItem Title="Inventario" Icon="shelf.svg" FlyoutDisplayOptions="AsMultipleItems">
+        <ShellContent
+            Title="Revisar productos"
+            Icon="shelf.svg"
+            ContentTemplate="{DataTemplate pages:InventoryPage}"
+            Route="InventoryPage" />
+        <ShellContent
+            Title="Por proveedor"
+            Icon="usermultiple.svg"
+            ContentTemplate="{DataTemplate pages:SupplierInventoryPage}"
+            Route="SupplierInventoryPage" />
+        <ShellContent
+            Title="Por marca"
+            Icon="tag.svg"
+            ContentTemplate="{DataTemplate pages:BrandInventoryPage}"
+            Route="BrandInventoryPage" />
+        <ShellContent
+            Title="Inventario operativo"
+            Icon="scanner.svg"
+            ContentTemplate="{DataTemplate pages:OperationalInventoryPage}"
+            Route="OperationalInventoryPage" />
+    </FlyoutItem>
 	<ShellContent
         Title="Nueva entrada"
         Icon="addshipment.svg"
