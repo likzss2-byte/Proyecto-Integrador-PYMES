@@ -727,6 +727,359 @@ public sealed class InventoryLogicTests
         Assert.Equal(1, dashboard.Summary.PendingOrders);
     }
 
+    [Fact]
+    public async Task Inventario_por_proveedor_carga_productos_relacionados_incluso_con_stock_cero()
+    {
+        await using var context = await TestContext.CreateAsync();
+        var supplier = await context.CreateSupplierAsync("Proveedor A");
+        var first = await context.CreateProductAsync("PROV-A-1");
+        var second = await context.CreateProductAsync("PROV-A-2", stock: 2);
+        await context.Suppliers.LinkProductAsync(context.Business.Id, new(first.Id, supplier.Id, null, null));
+        await context.Suppliers.LinkProductAsync(context.Business.Id, new(second.Id, supplier.Id, null, null));
+
+        var session = await context.CountSessions.CreateAsync(
+            context.Business.Id,
+            new(InventoryCountType.BySupplier, SupplierId: supplier.Id));
+
+        Assert.Equal(2, session.Lines.Count);
+        Assert.Contains(session.Lines, line => line.ProductId == first.Id && line.TheoreticalStock == 0);
+        Assert.Equal(InventoryCountType.BySupplier, session.Type);
+        Assert.Equal(supplier.Id, session.SupplierId);
+    }
+
+    [Fact]
+    public async Task Inventario_por_proveedor_no_incluye_productos_de_otro_proveedor()
+    {
+        await using var context = await TestContext.CreateAsync();
+        var selected = await context.CreateSupplierAsync("Proveedor seleccionado");
+        var other = await context.CreateSupplierAsync("Proveedor distinto");
+        var included = await context.CreateProductAsync("PROV-IN");
+        var excluded = await context.CreateProductAsync("PROV-OUT");
+        await context.Suppliers.LinkProductAsync(context.Business.Id, new(included.Id, selected.Id, null, null));
+        await context.Suppliers.LinkProductAsync(context.Business.Id, new(excluded.Id, other.Id, null, null));
+
+        var products = await context.Catalog.GetProductsBySupplierAsync(context.Business.Id, selected.Id);
+
+        Assert.Equal(included.Id, Assert.Single(products).Id);
+        Assert.DoesNotContain(products, product => product.Id == excluded.Id);
+    }
+
+    [Fact]
+    public async Task Producto_con_varios_proveedores_aparece_en_cada_filtro()
+    {
+        await using var context = await TestContext.CreateAsync();
+        var firstSupplier = await context.CreateSupplierAsync("Proveedor uno");
+        var secondSupplier = await context.CreateSupplierAsync("Proveedor dos");
+        var product = await context.CreateProductAsync("MULTI-PROV");
+        await context.Suppliers.LinkProductAsync(context.Business.Id, new(product.Id, firstSupplier.Id, null, null));
+        await context.Suppliers.LinkProductAsync(context.Business.Id, new(product.Id, secondSupplier.Id, null, null));
+
+        Assert.Contains(await context.Catalog.GetProductsBySupplierAsync(context.Business.Id, firstSupplier.Id), item => item.Id == product.Id);
+        Assert.Contains(await context.Catalog.GetProductsBySupplierAsync(context.Business.Id, secondSupplier.Id), item => item.Id == product.Id);
+    }
+
+    [Fact]
+    public async Task Recepcion_con_proveedor_crea_la_relacion_para_su_inventario()
+    {
+        await using var context = await TestContext.CreateAsync();
+        var supplier = await context.CreateSupplierAsync("Proveedor de recepción");
+        var product = await context.CreateProductAsync("PROV-RECEIPT", expirationMode: ExpirationMode.NotApplicable);
+
+        await context.Lots.ReceiveAsync(
+            context.Business.Id,
+            new InventoryLotReceiptInput(
+                product.Id,
+                2,
+                ExpirationMode.NotApplicable,
+                LotCode: "REC-PROV",
+                SupplierId: supplier.Id));
+
+        Assert.Contains(
+            await context.Catalog.GetProductsBySupplierAsync(context.Business.Id, supplier.Id),
+            item => item.Id == product.Id);
+    }
+
+    [Fact]
+    public async Task Inventario_por_marca_carga_solo_productos_de_la_marca()
+    {
+        await using var context = await TestContext.CreateAsync();
+        var included = await context.CreateProductAsync("MARCA-IN", brand: "Norte");
+        var excluded = await context.CreateProductAsync("MARCA-OUT", brand: "Sur");
+
+        var session = await context.CountSessions.CreateAsync(
+            context.Business.Id,
+            new(InventoryCountType.ByBrand, Brand: " norte "));
+
+        Assert.Equal(included.Id, Assert.Single(session.Lines).ProductId);
+        Assert.DoesNotContain(session.Lines, line => line.ProductId == excluded.Id);
+        Assert.Equal(InventoryCountType.ByBrand, session.Type);
+    }
+
+    [Fact]
+    public async Task Marcas_se_normalizan_por_espacios_y_mayusculas()
+    {
+        await using var context = await TestContext.CreateAsync();
+        await context.CreateProductAsync("BRAND-1", brand: "  Mi   Marca ");
+        await context.CreateProductAsync("BRAND-2", brand: "mi marca");
+        await context.CreateProductAsync("BRAND-3", brand: "MI MARCA");
+
+        var brands = await context.Catalog.GetBrandsAsync(context.Business.Id);
+
+        Assert.Single(brands);
+        Assert.Equal("MI MARCA", InventoryCatalogService.NormalizeBrandKey(brands.Single()));
+    }
+
+    [Fact]
+    public async Task Inventario_operativo_se_crea_sin_proveedor_ni_marca()
+    {
+        await using var context = await TestContext.CreateAsync();
+
+        var session = await context.CountSessions.CreateAsync(
+            context.Business.Id,
+            new(InventoryCountType.FreeOperational));
+
+        Assert.Null(session.SupplierId);
+        Assert.Null(session.Brand);
+        Assert.Empty(session.Lines);
+        Assert.Equal(InventoryCountStatus.InProgress, session.Status);
+    }
+
+    [Fact]
+    public async Task Inventario_operativo_agrega_producto_por_codigo_de_barras()
+    {
+        await using var context = await TestContext.CreateAsync();
+        var product = await context.CreateProductAsync("BAR-SKU", barcode: "7501055300075");
+        var session = await context.CountSessions.CreateAsync(context.Business.Id, new(InventoryCountType.FreeOperational));
+        var found = await context.Catalog.FindByCodeAsync(context.Business.Id, "7501055300075");
+
+        session = await context.CountSessions.AddProductAsync(context.Business.Id, session.Id, found!.Id);
+
+        Assert.Equal(product.Id, Assert.Single(session.Lines).ProductId);
+    }
+
+    [Fact]
+    public async Task Inventario_operativo_busca_por_sku_cuando_no_hay_codigo()
+    {
+        await using var context = await TestContext.CreateAsync();
+        var product = await context.CreateProductAsync("SKU-COMPATIBLE");
+
+        var found = await context.Catalog.FindByCodeAsync(context.Business.Id, " sku-compatible ");
+
+        Assert.Equal(product.Id, found?.Id);
+    }
+
+    [Fact]
+    public async Task Sesion_no_permite_producto_duplicado()
+    {
+        await using var context = await TestContext.CreateAsync();
+        var product = await context.CreateProductAsync("COUNT-DUP");
+        var session = await context.CountSessions.CreateAsync(context.Business.Id, new(InventoryCountType.FreeOperational));
+        await context.CountSessions.AddProductAsync(context.Business.Id, session.Id, product.Id);
+
+        await Assert.ThrowsAsync<InventoryRuleException>(() =>
+            context.CountSessions.AddProductAsync(context.Business.Id, session.Id, product.Id));
+    }
+
+    [Fact]
+    public async Task Sesion_calcula_faltante()
+    {
+        await using var context = await TestContext.CreateAsync();
+        var product = await context.CreateProductAsync("COUNT-MISS", stock: 10);
+        var session = await context.CountSessions.CreateAsync(context.Business.Id, new(InventoryCountType.FreeOperational));
+        session = await context.CountSessions.AddProductAsync(context.Business.Id, session.Id, product.Id);
+
+        session = await context.CountSessions.SetPhysicalQuantityAsync(context.Business.Id, session.Id, product.Id, 7);
+
+        Assert.Equal(3, Assert.Single(session.Lines).Missing);
+        Assert.Equal(0, Assert.Single(session.Lines).Surplus);
+    }
+
+    [Fact]
+    public async Task Sesion_calcula_sobrante()
+    {
+        await using var context = await TestContext.CreateAsync();
+        var product = await context.CreateProductAsync("COUNT-PLUS", stock: 4);
+        var session = await context.CountSessions.CreateAsync(context.Business.Id, new(InventoryCountType.FreeOperational));
+        session = await context.CountSessions.AddProductAsync(context.Business.Id, session.Id, product.Id);
+
+        session = await context.CountSessions.SetPhysicalQuantityAsync(context.Business.Id, session.Id, product.Id, 6);
+
+        Assert.Equal(0, Assert.Single(session.Lines).Missing);
+        Assert.Equal(2, Assert.Single(session.Lines).Surplus);
+    }
+
+    [Fact]
+    public async Task Sesion_acepta_inventario_fisico_igual_a_cero()
+    {
+        await using var context = await TestContext.CreateAsync();
+        var product = await context.CreateProductAsync("COUNT-ZERO", stock: 3);
+        var session = await context.CountSessions.CreateAsync(context.Business.Id, new(InventoryCountType.FreeOperational));
+        session = await context.CountSessions.AddProductAsync(context.Business.Id, session.Id, product.Id);
+
+        session = await context.CountSessions.SetPhysicalQuantityAsync(context.Business.Id, session.Id, product.Id, 0);
+
+        Assert.True(Assert.Single(session.Lines).Counted);
+        Assert.Equal(3, Assert.Single(session.Lines).Missing);
+    }
+
+    [Fact]
+    public async Task Sesion_acepta_decimales_en_kilogramos_y_litros()
+    {
+        await using var context = await TestContext.CreateAsync();
+        var kilograms = await context.CreateProductAsync("COUNT-KG", stock: 2.5m, unit: UnitOfMeasure.Kilogram);
+        var liters = await context.CreateProductAsync("COUNT-L", stock: 3.25m, unit: UnitOfMeasure.Liter);
+        var session = await context.CountSessions.CreateAsync(context.Business.Id, new(InventoryCountType.FreeOperational));
+        session = await context.CountSessions.AddProductAsync(context.Business.Id, session.Id, kilograms.Id);
+        session = await context.CountSessions.AddProductAsync(context.Business.Id, session.Id, liters.Id);
+
+        await context.CountSessions.SetPhysicalQuantityAsync(context.Business.Id, session.Id, kilograms.Id, 2.125m);
+        session = await context.CountSessions.SetPhysicalQuantityAsync(context.Business.Id, session.Id, liters.Id, 3.875m);
+
+        Assert.Equal(2.125m, session.Lines.Single(line => line.ProductId == kilograms.Id).PhysicalStock);
+        Assert.Equal(3.875m, session.Lines.Single(line => line.ProductId == liters.Id).PhysicalStock);
+    }
+
+    [Fact]
+    public async Task Sesion_rechaza_cantidades_negativas()
+    {
+        await using var context = await TestContext.CreateAsync();
+        var product = await context.CreateProductAsync("COUNT-NEG");
+        var session = await context.CountSessions.CreateAsync(context.Business.Id, new(InventoryCountType.FreeOperational));
+        session = await context.CountSessions.AddProductAsync(context.Business.Id, session.Id, product.Id);
+
+        await Assert.ThrowsAsync<InventoryRuleException>(() =>
+            context.CountSessions.SetPhysicalQuantityAsync(context.Business.Id, session.Id, product.Id, -1));
+    }
+
+    [Fact]
+    public async Task Sesion_se_guarda_y_se_reanuda_con_su_valor_teorico_historico()
+    {
+        await using var context = await TestContext.CreateAsync();
+        var product = await context.CreateProductAsync("COUNT-RESUME", stock: 8);
+        var session = await context.CountSessions.CreateAsync(context.Business.Id, new(InventoryCountType.FreeOperational));
+        session = await context.CountSessions.AddProductAsync(context.Business.Id, session.Id, product.Id);
+        await context.CountSessions.SetPhysicalQuantityAsync(context.Business.Id, session.Id, product.Id, 7);
+        await context.CountSessions.SaveProgressAsync(context.Business.Id, session.Id, "Mitad del local");
+
+        var resumed = Assert.Single(await context.CountSessions.GetOpenAsync(context.Business.Id, InventoryCountType.FreeOperational));
+
+        Assert.Equal(session.Id, resumed.Id);
+        Assert.Equal(8, Assert.Single(resumed.Lines).TheoreticalStock);
+        Assert.Equal(7, Assert.Single(resumed.Lines).PhysicalStock);
+        Assert.Equal("Mitad del local", resumed.Notes);
+    }
+
+    [Fact]
+    public async Task Sesion_se_confirma_una_sola_vez()
+    {
+        await using var context = await TestContext.CreateAsync();
+        var product = await context.CreateProductAsync("COUNT-ONCE", stock: 5);
+        var session = await context.CountSessions.CreateAsync(context.Business.Id, new(InventoryCountType.FreeOperational));
+        session = await context.CountSessions.AddProductAsync(context.Business.Id, session.Id, product.Id);
+        await context.CountSessions.SetPhysicalQuantityAsync(context.Business.Id, session.Id, product.Id, 4);
+
+        await context.CountSessions.ConfirmAsync(context.Business.Id, session.Id);
+        await Assert.ThrowsAsync<InventoryRuleException>(() =>
+            context.CountSessions.ConfirmAsync(context.Business.Id, session.Id));
+
+        Assert.Equal(4, (await context.Products.GetAsync(context.Business.Id, product.Id))!.Stock);
+    }
+
+    [Fact]
+    public async Task Confirmacion_crea_ajustes_positivos_y_negativos_ligados_a_la_sesion()
+    {
+        await using var context = await TestContext.CreateAsync();
+        var missing = await context.CreateProductAsync("COUNT-AJU-M", stock: 5);
+        var surplus = await context.CreateProductAsync("COUNT-AJU-S", stock: 5);
+        var session = await context.CountSessions.CreateAsync(context.Business.Id, new(InventoryCountType.FreeOperational));
+        session = await context.CountSessions.AddProductAsync(context.Business.Id, session.Id, missing.Id);
+        session = await context.CountSessions.AddProductAsync(context.Business.Id, session.Id, surplus.Id);
+        await context.CountSessions.SetPhysicalQuantityAsync(context.Business.Id, session.Id, missing.Id, 3);
+        await context.CountSessions.SetPhysicalQuantityAsync(context.Business.Id, session.Id, surplus.Id, 8);
+
+        await context.CountSessions.ConfirmAsync(context.Business.Id, session.Id);
+        var movements = (await context.Adjustments.GetMovementsAsync(context.Business.Id))
+            .Where(movement => movement.InventoryCountId == session.Id)
+            .ToArray();
+
+        Assert.Contains(movements, movement => movement.Type == InventoryMovementType.NegativeAdjustment && movement.Quantity == -2);
+        Assert.Contains(movements, movement => movement.Type == InventoryMovementType.PositiveAdjustment && movement.Quantity == 3);
+    }
+
+    [Fact]
+    public async Task Error_en_confirmacion_no_deja_ajustes_parciales()
+    {
+        await using var context = await TestContext.CreateAsync();
+        var normal = await context.CreateProductAsync("COUNT-ATOMIC-A", stock: 5);
+        var tracked = await context.CreateProductAsync("COUNT-ATOMIC-B", expirationMode: ExpirationMode.Tracked);
+        await context.Lots.ReceiveAsync(
+            context.Business.Id,
+            tracked.Id,
+            5,
+            ExpirationMode.Tracked,
+            DateOnly.FromDateTime(DateTime.Today).AddDays(10),
+            "AT-B");
+        var session = await context.CountSessions.CreateAsync(context.Business.Id, new(InventoryCountType.FreeOperational));
+        session = await context.CountSessions.AddProductAsync(context.Business.Id, session.Id, normal.Id);
+        session = await context.CountSessions.AddProductAsync(context.Business.Id, session.Id, tracked.Id);
+        await context.CountSessions.SetPhysicalQuantityAsync(context.Business.Id, session.Id, normal.Id, 4);
+        await context.CountSessions.SetPhysicalQuantityAsync(context.Business.Id, session.Id, tracked.Id, 4);
+
+        await Assert.ThrowsAsync<InventoryRuleException>(() =>
+            context.CountSessions.ConfirmAsync(context.Business.Id, session.Id));
+
+        Assert.Equal(5, (await context.Products.GetAsync(context.Business.Id, normal.Id))!.Stock);
+        Assert.Equal(5, (await context.Products.GetAsync(context.Business.Id, tracked.Id))!.Stock);
+        Assert.Equal(InventoryCountStatus.InProgress, (await context.CountSessions.GetAsync(context.Business.Id, session.Id))!.Status);
+    }
+
+    [Fact]
+    public async Task Guardar_sesion_no_modifica_stock_antes_de_confirmar()
+    {
+        await using var context = await TestContext.CreateAsync();
+        var product = await context.CreateProductAsync("COUNT-DRAFT", stock: 9);
+        var session = await context.CountSessions.CreateAsync(context.Business.Id, new(InventoryCountType.FreeOperational));
+        session = await context.CountSessions.AddProductAsync(context.Business.Id, session.Id, product.Id);
+
+        await context.CountSessions.SetPhysicalQuantityAsync(context.Business.Id, session.Id, product.Id, 2);
+        await context.CountSessions.SaveProgressAsync(context.Business.Id, session.Id, "Guardado");
+
+        Assert.Equal(9, (await context.Products.GetAsync(context.Business.Id, product.Id))!.Stock);
+        Assert.DoesNotContain(
+            await context.Adjustments.GetMovementsAsync(context.Business.Id, product.Id),
+            movement => movement.InventoryCountId == session.Id);
+    }
+
+    [Fact]
+    public async Task Conteo_por_lote_ajusta_el_lote_correcto()
+    {
+        await using var context = await TestContext.CreateAsync();
+        var product = await context.CreateProductAsync("COUNT-LOT", expirationMode: ExpirationMode.Tracked);
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        await context.Lots.ReceiveAsync(context.Business.Id, product.Id, 3, ExpirationMode.Tracked, today.AddDays(5), "LOTE-A");
+        await context.Lots.ReceiveAsync(context.Business.Id, product.Id, 4, ExpirationMode.Tracked, today.AddDays(20), "LOTE-B");
+        var session = await context.CountSessions.CreateAsync(context.Business.Id, new(InventoryCountType.FreeOperational));
+        session = await context.CountSessions.AddProductAsync(context.Business.Id, session.Id, product.Id);
+        session = await context.CountSessions.BeginLotCountAsync(context.Business.Id, session.Id, product.Id);
+        var line = Assert.Single(session.Lines);
+        var firstLot = line.LotLines.Single(lot => lot.LotCode == "LOTE-A");
+        var secondLot = line.LotLines.Single(lot => lot.LotCode == "LOTE-B");
+        await context.CountSessions.SetLotPhysicalQuantityAsync(context.Business.Id, session.Id, firstLot.Id, 1);
+        await context.CountSessions.SetLotPhysicalQuantityAsync(context.Business.Id, session.Id, secondLot.Id, 4);
+
+        await context.CountSessions.ConfirmAsync(context.Business.Id, session.Id);
+        var lots = await context.Lots.GetLotsAsync(context.Business.Id, product.Id);
+
+        Assert.Equal(1, lots.Single(lot => lot.LotCode == "LOTE-A").Quantity);
+        Assert.Equal(4, lots.Single(lot => lot.LotCode == "LOTE-B").Quantity);
+        Assert.Equal(5, (await context.Products.GetAsync(context.Business.Id, product.Id))!.Stock);
+        var movement = Assert.Single(
+            await context.Adjustments.GetMovementsAsync(context.Business.Id, product.Id),
+            item => item.InventoryCountId == session.Id);
+        Assert.Equal(InventoryMovementType.NegativeAdjustment, movement.Type);
+        Assert.Equal(firstLot.LotId, Assert.Single(movement.LotAllocations).LotId);
+    }
+
     private sealed class FakeExternalCatalog(ExternalProduct? result) : IExternalProductCatalog
     {
         public Task<ExternalProduct?> FindAsync(string barcode, CancellationToken cancellationToken = default) =>
@@ -754,6 +1107,8 @@ internal sealed class TestContext : IAsyncDisposable
         Transactions = new InventoryTransactionService(database);
         Adjustments = new InventoryAdjustmentService(database);
         Lots = new InventoryLotService(database);
+        Catalog = new InventoryCatalogService(database, Products);
+        CountSessions = new InventoryCountSessionService(database);
         Orders = new PurchaseOrderService(database);
         Dashboard = new DashboardService(database, Lots);
         Businesses = new BusinessService(database);
@@ -766,6 +1121,8 @@ internal sealed class TestContext : IAsyncDisposable
     public InventoryTransactionService Transactions { get; }
     public InventoryAdjustmentService Adjustments { get; }
     public InventoryLotService Lots { get; }
+    public InventoryCatalogService Catalog { get; }
+    public InventoryCountSessionService CountSessions { get; }
     public PurchaseOrderService Orders { get; }
     public DashboardService Dashboard { get; }
     public BusinessService Businesses { get; }
@@ -789,7 +1146,8 @@ internal sealed class TestContext : IAsyncDisposable
         UnitOfMeasure unit = UnitOfMeasure.Unit,
         string? barcode = null,
         ExpirationMode expirationMode = ExpirationMode.Unknown,
-        DateOnly? initialExpirationDate = null) =>
+        DateOnly? initialExpirationDate = null,
+        string? brand = null) =>
         Products.SaveAsync(
             Business.Id,
             new ProductInput(
@@ -797,7 +1155,7 @@ internal sealed class TestContext : IAsyncDisposable
                 barcode,
                 $"Producto {sku}",
                 null,
-                null,
+                brand,
                 unit,
                 0,
                 0,
