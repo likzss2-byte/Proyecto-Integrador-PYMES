@@ -469,6 +469,264 @@ public sealed class InventoryLogicTests
         Assert.Equal(0, summary.MissingDateProducts);
     }
 
+    [Fact]
+    public async Task Producto_con_caducidad_crea_lote_inicial_y_producto_sin_caducidad_no_exige_fecha()
+    {
+        await using var context = await TestContext.CreateAsync();
+        var expiration = DateOnly.FromDateTime(DateTime.Today).AddDays(15);
+        var tracked = await context.CreateProductAsync(
+            "SKU-PER",
+            stock: 2,
+            expirationMode: ExpirationMode.Tracked,
+            initialExpirationDate: expiration);
+        var durable = await context.CreateProductAsync(
+            "SKU-DUR",
+            stock: 3,
+            expirationMode: ExpirationMode.NotApplicable);
+
+        var trackedLot = Assert.Single(await context.Lots.GetLotsAsync(context.Business.Id, tracked.Id));
+        var durableLot = Assert.Single(await context.Lots.GetLotsAsync(context.Business.Id, durable.Id));
+        Assert.Equal(expiration, trackedLot.ExpirationDate);
+        Assert.Null(durableLot.ExpirationDate);
+    }
+
+    [Fact]
+    public async Task Dos_lotes_del_mismo_producto_se_conservan_incluso_si_uno_se_agota()
+    {
+        await using var context = await TestContext.CreateAsync();
+        var product = await context.CreateProductAsync("SKU-LOTES", expirationMode: ExpirationMode.Tracked);
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        await context.Lots.ReceiveAsync(context.Business.Id, product.Id, 2, ExpirationMode.Tracked, today.AddDays(2), "L-A");
+        await context.Lots.ReceiveAsync(context.Business.Id, product.Id, 4, ExpirationMode.Tracked, today.AddDays(9), "L-B");
+        var sale = await context.Transactions.CreateSaleAsync(context.Business.Id, [new(product.Id, 2, 1)]);
+
+        await context.Transactions.ConfirmAsync(context.Business.Id, sale.Id);
+
+        var lots = await context.Lots.GetLotsAsync(context.Business.Id, product.Id);
+        Assert.Equal(2, lots.Count);
+        Assert.Equal(0, lots.Single(lot => lot.LotCode == "L-A").Quantity);
+        Assert.Equal(InventoryLotStatus.Exhausted, lots.Single(lot => lot.LotCode == "L-A").Status);
+        Assert.Equal(4, lots.Single(lot => lot.LotCode == "L-B").Quantity);
+    }
+
+    [Fact]
+    public async Task Alertas_de_siete_dias_excluyen_fechas_posteriores_y_separan_caducados()
+    {
+        await using var context = await TestContext.CreateAsync();
+        var product = await context.CreateProductAsync("SKU-ALERT", expirationMode: ExpirationMode.Tracked);
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        await context.Lots.ReceiveAsync(context.Business.Id, product.Id, 1, ExpirationMode.Tracked, today.AddDays(-1), "VENCIDO");
+        await context.Lots.ReceiveAsync(context.Business.Id, product.Id, 1, ExpirationMode.Tracked, today, "HOY");
+        await context.Lots.ReceiveAsync(context.Business.Id, product.Id, 1, ExpirationMode.Tracked, today.AddDays(7), "DIA-7");
+        await context.Lots.ReceiveAsync(context.Business.Id, product.Id, 1, ExpirationMode.Tracked, today.AddDays(8), "DIA-8");
+
+        var expiring = await context.Lots.GetExpiringAsync(context.Business.Id);
+        var expired = await context.Lots.GetExpiredAsync(context.Business.Id);
+
+        Assert.Equal(["HOY", "DIA-7"], expiring.Select(alert => alert.LotCode));
+        Assert.Equal("VENCIDO", Assert.Single(expired).LotCode);
+        Assert.DoesNotContain(expiring, alert => alert.LotCode == "DIA-8");
+    }
+
+    [Fact]
+    public async Task Venta_bloquea_lote_caducado_sin_confirmacion_explicita()
+    {
+        await using var context = await TestContext.CreateAsync();
+        var product = await context.CreateProductAsync("SKU-VENC", expirationMode: ExpirationMode.Tracked);
+        await context.Lots.ReceiveAsync(
+            context.Business.Id,
+            product.Id,
+            2,
+            ExpirationMode.Tracked,
+            DateOnly.FromDateTime(DateTime.Today).AddDays(-1),
+            "CAD");
+        var sale = await context.Transactions.CreateSaleAsync(context.Business.Id, [new(product.Id, 1, 1)]);
+
+        await Assert.ThrowsAsync<InventoryRuleException>(
+            () => context.Transactions.ConfirmAsync(context.Business.Id, sale.Id));
+        Assert.Equal(2, (await context.Products.GetAsync(context.Business.Id, product.Id))!.Stock);
+    }
+
+    [Fact]
+    public async Task Pedido_manual_sin_codigo_fecha_estimada_ni_producto_no_modifica_inventario()
+    {
+        await using var context = await TestContext.CreateAsync();
+        var existing = await context.CreateProductAsync("SKU-STABLE", stock: 5);
+
+        var order = await context.Orders.CreateAsync(
+            context.Business.Id,
+            new PurchaseOrderInput(
+                null,
+                "Proveedor del mercado",
+                DateOnly.FromDateTime(DateTime.Today),
+                null,
+                "Pedido verbal",
+                [new(null, "Queso artesanal", null, null, 1.5m, UnitOfMeasure.Kilogram)]));
+
+        Assert.Equal(PurchaseOrderStatus.Pending, order.Status);
+        Assert.Null(order.EstimatedDate);
+        Assert.Null(order.Lines.Single().ProductId);
+        Assert.Null(order.Lines.Single().Barcode);
+        Assert.Equal(5, (await context.Products.GetAsync(context.Business.Id, existing.Id))!.Stock);
+    }
+
+    [Fact]
+    public async Task Recepcion_parcial_calcula_pendiente_y_al_completar_cambia_estado()
+    {
+        await using var context = await TestContext.CreateAsync();
+        var product = await context.CreateProductAsync(
+            "SKU-REC",
+            expirationMode: ExpirationMode.NotApplicable);
+        var order = await context.Orders.CreateAsync(
+            context.Business.Id,
+            new PurchaseOrderInput(
+                null,
+                "Proveedor manual",
+                DateOnly.FromDateTime(DateTime.Today),
+                null,
+                null,
+                [new(product.Id, null, null, null, 10, UnitOfMeasure.Unit, 2m)]));
+
+        var first = await context.Orders.ReceiveAsync(
+            context.Business.Id,
+            order.Id,
+            [new(order.Lines.Single().Id, product.Id, 4, "REC-A")],
+            "receipt-partial-1");
+        order = (await context.Orders.GetAsync(context.Business.Id, order.Id))!;
+
+        Assert.Equal(PurchaseOrderStatus.PartiallyReceived, order.Status);
+        Assert.Equal(6, order.Lines.Single().PendingQuantity);
+        Assert.Equal(4, (await context.Products.GetAsync(context.Business.Id, product.Id))!.Stock);
+        Assert.Single(first.Lines);
+
+        await context.Orders.ReceiveAsync(
+            context.Business.Id,
+            order.Id,
+            [new(order.Lines.Single().Id, product.Id, 6, "REC-B")],
+            "receipt-partial-2");
+        order = (await context.Orders.GetAsync(context.Business.Id, order.Id))!;
+        Assert.Equal(PurchaseOrderStatus.Received, order.Status);
+        Assert.Equal(0, order.Lines.Single().PendingQuantity);
+        Assert.Equal(10, (await context.Products.GetAsync(context.Business.Id, product.Id))!.Stock);
+    }
+
+    [Fact]
+    public async Task Recepcion_crea_lote_con_caducidad_y_movimiento()
+    {
+        await using var context = await TestContext.CreateAsync();
+        var product = await context.CreateProductAsync("SKU-REC-CAD", expirationMode: ExpirationMode.Tracked);
+        var supplier = await context.CreateSupplierAsync("Proveedor formal");
+        var expiration = DateOnly.FromDateTime(DateTime.Today).AddDays(20);
+        var order = await context.Orders.CreateAsync(
+            context.Business.Id,
+            new PurchaseOrderInput(
+                supplier.Id,
+                null,
+                DateOnly.FromDateTime(DateTime.Today),
+                null,
+                null,
+                [new(product.Id, null, null, null, 3, UnitOfMeasure.Unit)]));
+
+        var receipt = await context.Orders.ReceiveAsync(
+            context.Business.Id,
+            order.Id,
+            [new(order.Lines.Single().Id, product.Id, 3, "LOTE-REC", ExpirationDate: expiration)],
+            "receipt-expiration");
+
+        var lot = Assert.Single(await context.Lots.GetLotsAsync(context.Business.Id, product.Id));
+        var movement = Assert.Single(
+            await context.Adjustments.GetMovementsAsync(context.Business.Id, product.Id),
+            item => item.Type == InventoryMovementType.PurchaseReceipt);
+        Assert.Equal(receipt.Id, lot.ReceiptId);
+        Assert.Equal(order.Id, lot.PurchaseOrderId);
+        Assert.Equal(expiration, lot.ExpirationDate);
+        Assert.Equal("LOTE-REC", lot.LotCode);
+        Assert.Equal(3, movement.ResultingStock);
+    }
+
+    [Fact]
+    public async Task Recepcion_no_acepta_mas_de_lo_pendiente()
+    {
+        await using var context = await TestContext.CreateAsync();
+        var product = await context.CreateProductAsync("SKU-OVER", expirationMode: ExpirationMode.NotApplicable);
+        var order = await context.Orders.CreateAsync(
+            context.Business.Id,
+            new PurchaseOrderInput(null, "Proveedor", DateOnly.FromDateTime(DateTime.Today), null, null,
+                [new(product.Id, null, null, null, 2, UnitOfMeasure.Unit)]));
+
+        await Assert.ThrowsAsync<InventoryRuleException>(() => context.Orders.ReceiveAsync(
+            context.Business.Id,
+            order.Id,
+            [new(order.Lines.Single().Id, product.Id, 3)],
+            "receipt-over"));
+        Assert.Equal(0, (await context.Products.GetAsync(context.Business.Id, product.Id))!.Stock);
+    }
+
+    [Fact]
+    public async Task Doble_confirmacion_de_recepcion_es_idempotente()
+    {
+        await using var context = await TestContext.CreateAsync();
+        var product = await context.CreateProductAsync("SKU-IDEMP", expirationMode: ExpirationMode.NotApplicable);
+        var order = await context.Orders.CreateAsync(
+            context.Business.Id,
+            new PurchaseOrderInput(null, "Proveedor", DateOnly.FromDateTime(DateTime.Today), null, null,
+                [new(product.Id, null, null, null, 2, UnitOfMeasure.Unit)]));
+        var input = new[] { new PurchaseReceiptInput(order.Lines.Single().Id, product.Id, 2) };
+
+        var first = await context.Orders.ReceiveAsync(context.Business.Id, order.Id, input, "same-operation-key");
+        var second = await context.Orders.ReceiveAsync(context.Business.Id, order.Id, input, "same-operation-key");
+
+        Assert.Equal(first.Id, second.Id);
+        Assert.Equal(2, (await context.Products.GetAsync(context.Business.Id, product.Id))!.Stock);
+    }
+
+    [Fact]
+    public async Task Recepcion_multiarticulo_revierte_todo_si_un_detalle_falla()
+    {
+        await using var context = await TestContext.CreateAsync();
+        var first = await context.CreateProductAsync("SKU-AT-A", expirationMode: ExpirationMode.NotApplicable);
+        var second = await context.CreateProductAsync("SKU-AT-B", expirationMode: ExpirationMode.NotApplicable);
+        var order = await context.Orders.CreateAsync(
+            context.Business.Id,
+            new PurchaseOrderInput(null, "Proveedor", DateOnly.FromDateTime(DateTime.Today), null, null,
+                [
+                    new(first.Id, null, null, null, 2, UnitOfMeasure.Unit),
+                    new(second.Id, null, null, null, 2, UnitOfMeasure.Unit)
+                ]));
+
+        await Assert.ThrowsAsync<InventoryRuleException>(() => context.Orders.ReceiveAsync(
+            context.Business.Id,
+            order.Id,
+            [
+                new(order.Lines[0].Id, first.Id, 2),
+                new(order.Lines[1].Id, second.Id, 3)
+            ],
+            "receipt-atomic"));
+
+        Assert.Equal(0, (await context.Products.GetAsync(context.Business.Id, first.Id))!.Stock);
+        Assert.Equal(0, (await context.Products.GetAsync(context.Business.Id, second.Id))!.Stock);
+        Assert.All((await context.Orders.GetAsync(context.Business.Id, order.Id))!.Lines, line => Assert.Equal(0, line.ReceivedQuantity));
+    }
+
+    [Fact]
+    public async Task Panel_muestra_stock_minimo_y_contadores_de_pedidos_reales()
+    {
+        await using var context = await TestContext.CreateAsync();
+        await context.Products.SaveAsync(
+            context.Business.Id,
+            new ProductInput("SKU-MIN", null, "Producto mínimo", null, null, UnitOfMeasure.Unit, 5, 0),
+            2);
+        await context.Orders.CreateAsync(
+            context.Business.Id,
+            new PurchaseOrderInput(null, "Proveedor", DateOnly.FromDateTime(DateTime.Today), null, null,
+                [new(null, "Concepto manual", null, null, 1, UnitOfMeasure.Unit)]));
+
+        var dashboard = await context.Dashboard.GetAsync(context.Business.Id);
+
+        Assert.Contains(dashboard.MinimumStock, product => product.Code == "SKU-MIN");
+        Assert.Equal(1, dashboard.Summary.PendingOrders);
+    }
+
     private sealed class FakeExternalCatalog(ExternalProduct? result) : IExternalProductCatalog
     {
         public Task<ExternalProduct?> FindAsync(string barcode, CancellationToken cancellationToken = default) =>
@@ -496,6 +754,8 @@ internal sealed class TestContext : IAsyncDisposable
         Transactions = new InventoryTransactionService(database);
         Adjustments = new InventoryAdjustmentService(database);
         Lots = new InventoryLotService(database);
+        Orders = new PurchaseOrderService(database);
+        Dashboard = new DashboardService(database, Lots);
         Businesses = new BusinessService(database);
         Lookup = new ProductLookupService(database, Products, externalCatalog);
     }
@@ -506,6 +766,8 @@ internal sealed class TestContext : IAsyncDisposable
     public InventoryTransactionService Transactions { get; }
     public InventoryAdjustmentService Adjustments { get; }
     public InventoryLotService Lots { get; }
+    public PurchaseOrderService Orders { get; }
+    public DashboardService Dashboard { get; }
     public BusinessService Businesses { get; }
     public ProductLookupService Lookup { get; }
     public Business Business { get; private set; } = null!;
@@ -525,11 +787,28 @@ internal sealed class TestContext : IAsyncDisposable
         string sku,
         decimal stock = 0m,
         UnitOfMeasure unit = UnitOfMeasure.Unit,
-        string? barcode = null) =>
+        string? barcode = null,
+        ExpirationMode expirationMode = ExpirationMode.Unknown,
+        DateOnly? initialExpirationDate = null) =>
         Products.SaveAsync(
             Business.Id,
-            new ProductInput(sku, barcode, $"Producto {sku}", null, null, unit, 0, 0),
+            new ProductInput(
+                sku,
+                barcode,
+                $"Producto {sku}",
+                null,
+                null,
+                unit,
+                0,
+                0,
+                ExpirationMode: expirationMode,
+                InitialExpirationDate: initialExpirationDate),
             stock);
+
+    public Task<Supplier> CreateSupplierAsync(string company) =>
+        Suppliers.SaveAsync(
+            Business.Id,
+            new SupplierInput(company, null, null, null, null, null, null, null));
 
     public ValueTask DisposeAsync()
     {
