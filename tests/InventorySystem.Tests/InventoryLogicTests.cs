@@ -347,6 +347,71 @@ public sealed class InventoryLogicTests
         Assert.Equal(first, third);
     }
 
+    [Fact]
+    public async Task Migracion_respalda_e_importa_esquema_destino_sin_borrarlo()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"inventory-legacy-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        var databasePath = Path.Combine(directory, "InventorySystem.db");
+        try
+        {
+            using (var legacy = new SQLite.SQLiteConnection(databasePath))
+            {
+                legacy.Execute(
+                    """
+                    CREATE TABLE Item(
+                        ItemID INTEGER PRIMARY KEY AUTOINCREMENT,
+                        ItemName TEXT NOT NULL UNIQUE,
+                        ItemDescription TEXT NULL,
+                        SalePrice REAL NOT NULL,
+                        Stock INTEGER NOT NULL,
+                        ModifiedAt TEXT NOT NULL
+                    );
+                    """);
+                legacy.Execute(
+                    "INSERT INTO Item(ItemName,ItemDescription,SalePrice,Stock,ModifiedAt) VALUES(?,?,?,?,?);",
+                    "Producto anterior",
+                    "Se conserva",
+                    15.5m,
+                    7,
+                    DateTime.UtcNow.ToString("O"));
+            }
+
+            var database = new InventoryDatabase(databasePath);
+            await database.InitializeAsync();
+            var businesses = new BusinessService(database);
+            var products = new ProductRepository(database);
+            var business = await businesses.GetDefaultAsync();
+            var imported = Assert.Single(await products.SearchAsync(business.Id));
+
+            Assert.Equal("Producto anterior", imported.Name);
+            Assert.Equal(7, imported.Stock);
+            Assert.NotNull(database.LastBackupPath);
+            Assert.True(File.Exists(database.LastBackupPath));
+            Assert.True(await database.ReadAsync(connection => connection.GetTableInfo("Item").Count > 0));
+        }
+        finally
+        {
+            try { Directory.Delete(directory, recursive: true); } catch { }
+        }
+    }
+
+    [Fact]
+    public async Task Movimientos_no_se_pueden_editar_ni_eliminar()
+    {
+        await using var context = await TestContext.CreateAsync();
+        await context.CreateProductAsync("SKU-AUD", stock: 2);
+
+        await Assert.ThrowsAsync<SQLite.SQLiteException>(() =>
+            context.Database.WriteAsync(connection =>
+                connection.Execute("UPDATE inventory_movements SET reason='alterado';")));
+        await Assert.ThrowsAsync<SQLite.SQLiteException>(() =>
+            context.Database.WriteAsync(connection =>
+                connection.Execute("DELETE FROM inventory_movements;")));
+
+        Assert.Single(await context.Adjustments.GetMovementsAsync(context.Business.Id));
+    }
+
     private sealed class FakeExternalCatalog(ExternalProduct? result) : IExternalProductCatalog
     {
         public Task<ExternalProduct?> FindAsync(string barcode, CancellationToken cancellationToken = default) =>
