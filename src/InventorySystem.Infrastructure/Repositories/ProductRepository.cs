@@ -32,6 +32,10 @@ public sealed class ProductRepository
         if (initialStock > 0)
         {
             InventoryRules.ValidateQuantity(initialStock, input.UnitOfMeasure, "El inventario inicial");
+            if (input.ExpirationMode == ExpirationMode.Tracked && input.InitialExpirationDate is null)
+            {
+                throw new InventoryRuleException("La fecha de caducidad del inventario inicial es obligatoria.");
+            }
         }
 
         return _database.WriteAsync(connection =>
@@ -47,7 +51,7 @@ public sealed class ProductRepository
                 connection.Execute(
                     """
                     UPDATE products SET sku=?,barcode=?,name=?,description=?,brand=?,unit_of_measure=?,
-                        minimum_stock_milli=?,sale_price_basis=?,active=?,updated_at=?
+                        minimum_stock_milli=?,sale_price_basis=?,expiration_mode=?,active=?,updated_at=?
                     WHERE id=? AND business_id=?;
                     """,
                     sku,
@@ -58,6 +62,7 @@ public sealed class ProductRepository
                     (int)input.UnitOfMeasure,
                     SqliteValues.ToMilli(input.MinimumStock),
                     SqliteValues.ToMoney(input.SalePrice),
+                    (int)input.ExpirationMode,
                     input.Active ? 1 : 0,
                     now,
                     existing.Id,
@@ -70,8 +75,8 @@ public sealed class ProductRepository
                     """
                     INSERT INTO products(
                         business_id,sku,barcode,name,description,brand,unit_of_measure,stock_milli,
-                        minimum_stock_milli,sale_price_basis,active,created_at,updated_at)
-                    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?);
+                        minimum_stock_milli,sale_price_basis,expiration_mode,active,created_at,updated_at)
+                    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?);
                     """,
                     businessId,
                     sku,
@@ -83,20 +88,21 @@ public sealed class ProductRepository
                     SqliteValues.ToMilli(initialStock),
                     SqliteValues.ToMilli(input.MinimumStock),
                     SqliteValues.ToMoney(input.SalePrice),
+                    (int)input.ExpirationMode,
                     input.Active ? 1 : 0,
                     now,
                     now);
                 id = connection.ExecuteScalar<long>("SELECT last_insert_rowid();");
                 if (initialStock != 0)
                 {
-                    InventoryLotPersistence.Add(
+                    var lotId = InventoryLotPersistence.Add(
                         connection,
                         id,
                         initialStock,
-                        null,
-                        "EXISTENCIA-INICIAL",
+                        input.ExpirationMode == ExpirationMode.Tracked ? input.InitialExpirationDate : null,
+                        string.IsNullOrWhiteSpace(input.InitialLotCode) ? "EXISTENCIA-INICIAL" : input.InitialLotCode,
                         now);
-                    InsertMovement(
+                    var movementId = InsertMovement(
                         connection,
                         businessId,
                         id,
@@ -107,6 +113,10 @@ public sealed class ProductRepository
                         $"INICIAL-{id}",
                         "Inventario inicial",
                         now);
+                    InventoryLotPersistence.RecordMovementAllocations(
+                        connection,
+                        movementId,
+                        [new LotAllocation(lotId, initialStock)]);
                 }
             }
 
@@ -197,7 +207,7 @@ public sealed class ProductRepository
                 businessId)
             .FirstOrDefault();
 
-    internal static void InsertMovement(
+    internal static long InsertMovement(
         SQLiteConnection connection,
         long businessId,
         long productId,
@@ -225,6 +235,7 @@ public sealed class ProductRepository
             reference,
             DbText(reason),
             occurredAt);
+        return connection.ExecuteScalar<long>("SELECT last_insert_rowid();");
     }
 
     internal static object? DbText(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();

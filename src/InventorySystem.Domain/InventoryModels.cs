@@ -44,7 +44,24 @@ public enum InventoryMovementType
     NegativeAdjustment = 4,
     PhysicalCount = 5,
     EntryCancellation = 6,
-    SaleCancellation = 7
+    SaleCancellation = 7,
+    PurchaseReceipt = Entry
+}
+
+public enum InventoryLotStatus
+{
+    Active = 0,
+    Exhausted = 1
+}
+
+public enum PurchaseOrderStatus
+{
+    Draft = 0,
+    Pending = 1,
+    Confirmed = 2,
+    PartiallyReceived = 3,
+    Received = 4,
+    Cancelled = 5
 }
 
 public sealed class Business
@@ -89,10 +106,29 @@ public sealed class InventoryLot
 {
     public long Id { get; set; }
     public long ProductId { get; set; }
+    public long? SupplierId { get; set; }
+    public string? SupplierName { get; set; }
     public string? LotCode { get; set; }
+    public DateOnly? ManufacturingDate { get; set; }
     public decimal Quantity { get; set; }
+    public decimal InitialQuantity { get; set; }
+    public decimal? UnitCost { get; set; }
     public DateOnly? ExpirationDate { get; set; }
     public DateTime ReceivedAt { get; set; }
+    public InventoryLotStatus Status { get; set; }
+    public long? PurchaseOrderId { get; set; }
+    public long? ReceiptId { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+
+    public int? DaysUntilExpiration => ExpirationDate?.DayNumber - DateOnly.FromDateTime(DateTime.Today).DayNumber;
+    public string EffectiveStatus => Quantity <= 0
+        ? "Agotado"
+        : DaysUntilExpiration < 0
+            ? "Caducado"
+            : DaysUntilExpiration <= 7
+                ? "Próximo a caducar"
+                : "Vigente";
 }
 
 public sealed record ExpirationAlert(
@@ -102,7 +138,25 @@ public sealed record ExpirationAlert(
     string? LotCode,
     decimal Quantity,
     UnitOfMeasure UnitOfMeasure,
-    DateOnly ExpirationDate);
+    DateOnly ExpirationDate,
+    string? SupplierName = null)
+{
+    public int DaysRemaining => ExpirationDate.DayNumber - DateOnly.FromDateTime(DateTime.Today).DayNumber;
+    public string DisplayExpiration => ExpirationDate.ToString("dd/MM/yyyy", CultureInfo.CurrentCulture);
+    public string DisplayDays => DaysRemaining switch
+    {
+        < 0 => $"Vencido hace {Math.Abs(DaysRemaining)} día(s)",
+        0 => "Caduca hoy",
+        1 => "Caduca mañana",
+        _ => $"Caduca en {DaysRemaining} días"
+    };
+    public string DisplayQuantity => UnitOfMeasure switch
+    {
+        UnitOfMeasure.Kilogram => $"{Quantity:0.###} kg",
+        UnitOfMeasure.Liter => $"{Quantity:0.###} L",
+        _ => $"{Quantity:0.###} unidades"
+    };
+}
 
 public sealed record ExpirationSummary(
     int ExpiredProducts,
@@ -163,6 +217,9 @@ public sealed class InventoryDocumentLine
     public long ProductId { get; set; }
     public decimal Quantity { get; set; }
     public decimal UnitPrice { get; set; }
+    public string? LotCode { get; set; }
+    public DateOnly? ManufacturingDate { get; set; }
+    public DateOnly? ExpirationDate { get; set; }
     public decimal Subtotal => decimal.Round(Quantity * UnitPrice, 2, MidpointRounding.AwayFromZero);
 }
 
@@ -179,7 +236,119 @@ public sealed class InventoryMovement
     public string Reference { get; set; } = string.Empty;
     public string? Reason { get; set; }
     public DateTime OccurredAt { get; set; }
+    public List<InventoryMovementLot> LotAllocations { get; set; } = [];
 }
+
+public sealed record InventoryMovementLot(long LotId, decimal Quantity);
+
+public sealed class PurchaseOrder
+{
+    public long Id { get; set; }
+    public long BusinessId { get; set; }
+    public string Folio { get; set; } = string.Empty;
+    public long? SupplierId { get; set; }
+    public string? SupplierName { get; set; }
+    public string? ManualSupplierName { get; set; }
+    public DateOnly OrderDate { get; set; }
+    public DateOnly? EstimatedDate { get; set; }
+    public PurchaseOrderStatus Status { get; set; }
+    public string? Notes { get; set; }
+    public decimal EstimatedTotal { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+    public DateTime? ConfirmedAt { get; set; }
+    public DateTime? CancelledAt { get; set; }
+    public List<PurchaseOrderLine> Lines { get; set; } = [];
+
+    public string DisplaySupplier => SupplierName ?? ManualSupplierName ?? "Sin proveedor especificado";
+    public string DisplayStatus => Status switch
+    {
+        PurchaseOrderStatus.Draft => "Borrador",
+        PurchaseOrderStatus.Pending => "Pendiente",
+        PurchaseOrderStatus.Confirmed => "Confirmado",
+        PurchaseOrderStatus.PartiallyReceived => "Recibido parcialmente",
+        PurchaseOrderStatus.Received => "Recibido",
+        _ => "Cancelado"
+    };
+    public string DisplayDate => OrderDate.ToString("dd/MM/yyyy", CultureInfo.CurrentCulture);
+    public string DisplayTotal => EstimatedTotal.ToString("C", CultureInfo.CurrentCulture);
+}
+
+public sealed class PurchaseOrderLine
+{
+    public long Id { get; set; }
+    public long OrderId { get; set; }
+    public long? ProductId { get; set; }
+    public string Description { get; set; } = string.Empty;
+    public string? Barcode { get; set; }
+    public string? Sku { get; set; }
+    public decimal RequestedQuantity { get; set; }
+    public decimal ReceivedQuantity { get; set; }
+    public UnitOfMeasure UnitOfMeasure { get; set; }
+    public decimal? EstimatedUnitCost { get; set; }
+    public string? Notes { get; set; }
+
+    public decimal PendingQuantity => Math.Max(0m, RequestedQuantity - ReceivedQuantity);
+    public decimal EstimatedSubtotal => decimal.Round(
+        RequestedQuantity * (EstimatedUnitCost ?? 0m),
+        2,
+        MidpointRounding.AwayFromZero);
+    public string DisplayQuantity => $"Solicitado: {RequestedQuantity:0.###} · Recibido: {ReceivedQuantity:0.###} · Pendiente: {PendingQuantity:0.###}";
+}
+
+public sealed class PurchaseReceipt
+{
+    public long Id { get; set; }
+    public long BusinessId { get; set; }
+    public long OrderId { get; set; }
+    public string Reference { get; set; } = string.Empty;
+    public string OperationKey { get; set; } = string.Empty;
+    public string? Notes { get; set; }
+    public DateTime ReceivedAt { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public List<PurchaseReceiptLine> Lines { get; set; } = [];
+}
+
+public sealed class PurchaseReceiptLine
+{
+    public long Id { get; set; }
+    public long ReceiptId { get; set; }
+    public long OrderLineId { get; set; }
+    public long ProductId { get; set; }
+    public long LotId { get; set; }
+    public decimal Quantity { get; set; }
+    public decimal? UnitCost { get; set; }
+}
+
+public sealed record MinimumStockAlert(
+    long ProductId,
+    string ProductName,
+    string Code,
+    decimal Stock,
+    decimal MinimumStock,
+    UnitOfMeasure UnitOfMeasure,
+    string Status)
+{
+    public string DisplayStock => $"Actual: {Stock:0.###} · Mínimo: {MinimumStock:0.###} · {UnitOfMeasure switch
+    {
+        UnitOfMeasure.Kilogram => "kg",
+        UnitOfMeasure.Liter => "L",
+        _ => "unidades"
+    }}";
+}
+
+public sealed record DashboardSummary(
+    int MinimumStockProducts,
+    int ExpiringLots,
+    int ExpiredLots,
+    int PendingOrders,
+    int PartiallyReceivedOrders);
+
+public sealed record InventoryDashboard(
+    DashboardSummary Summary,
+    IReadOnlyList<MinimumStockAlert> MinimumStock,
+    IReadOnlyList<ExpirationAlert> ExpiringLots,
+    IReadOnlyList<ExpirationAlert> ExpiredLots);
 
 public sealed class InventoryCount
 {
@@ -218,7 +387,10 @@ public sealed record ProductInput(
     UnitOfMeasure UnitOfMeasure,
     decimal MinimumStock,
     decimal SalePrice,
-    bool Active = true);
+    bool Active = true,
+    ExpirationMode ExpirationMode = ExpirationMode.Unknown,
+    DateOnly? InitialExpirationDate = null,
+    string? InitialLotCode = null);
 
 public sealed record SupplierInput(
     string CompanyName,
@@ -238,11 +410,58 @@ public sealed record ProductSupplierInput(
     decimal? ReferenceCost,
     bool Active = true);
 
-public sealed record InventoryDocumentLineInput(long ProductId, decimal Quantity, decimal UnitPrice);
+public sealed record InventoryDocumentLineInput(
+    long ProductId,
+    decimal Quantity,
+    decimal UnitPrice,
+    string? LotCode = null,
+    DateOnly? ManufacturingDate = null,
+    DateOnly? ExpirationDate = null);
 
 public sealed record InventoryAdjustmentInput(long ProductId, decimal Quantity, string Reason);
 
 public sealed record InventoryCountLineInput(long ProductId, decimal PhysicalStock);
+
+public sealed record InventoryLotReceiptInput(
+    long ProductId,
+    decimal Quantity,
+    ExpirationMode ExpirationMode,
+    DateOnly? ExpirationDate = null,
+    string? LotCode = null,
+    long? SupplierId = null,
+    DateOnly? ManufacturingDate = null,
+    decimal? UnitCost = null,
+    long? PurchaseOrderId = null,
+    long? ReceiptId = null);
+
+public sealed record PurchaseOrderInput(
+    long? SupplierId,
+    string? ManualSupplierName,
+    DateOnly OrderDate,
+    DateOnly? EstimatedDate,
+    string? Notes,
+    IReadOnlyList<PurchaseOrderLineInput> Lines,
+    string? Folio = null,
+    PurchaseOrderStatus InitialStatus = PurchaseOrderStatus.Pending);
+
+public sealed record PurchaseOrderLineInput(
+    long? ProductId,
+    string? Description,
+    string? Barcode,
+    string? Sku,
+    decimal Quantity,
+    UnitOfMeasure UnitOfMeasure,
+    decimal? EstimatedUnitCost = null,
+    string? Notes = null);
+
+public sealed record PurchaseReceiptInput(
+    long OrderLineId,
+    long ProductId,
+    decimal Quantity,
+    string? LotCode = null,
+    DateOnly? ManufacturingDate = null,
+    DateOnly? ExpirationDate = null,
+    decimal? UnitCost = null);
 
 public sealed record ExternalProduct(
     string Barcode,
@@ -328,6 +547,11 @@ public static class InventoryRules
         if (input.SalePrice < 0)
         {
             throw new InventoryRuleException("El precio de venta no puede ser negativo.");
+        }
+
+        if (!Enum.IsDefined(input.ExpirationMode))
+        {
+            throw new InventoryRuleException("El manejo de caducidad no es válido.");
         }
     }
 

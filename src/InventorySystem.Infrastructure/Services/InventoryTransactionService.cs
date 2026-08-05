@@ -1,3 +1,4 @@
+using System.Globalization;
 using InventorySystem.Domain;
 using InventorySystem.Infrastructure.Data;
 using InventorySystem.Infrastructure.Repositories;
@@ -48,6 +49,7 @@ public sealed class InventoryTransactionService
     public Task<InventoryDocument> ConfirmAsync(
         long businessId,
         long documentId,
+        bool allowExpiredLots = false,
         CancellationToken cancellationToken = default) =>
         _database.WriteAsync(connection =>
         {
@@ -68,14 +70,33 @@ public sealed class InventoryTransactionService
             var now = SqliteValues.Date(DateTime.UtcNow);
             foreach (var change in changes)
             {
-                InventoryLotPersistence.ApplyStockChange(
-                    connection,
-                    change.Product.Id,
-                    change.SignedQuantity,
-                    document.Reference,
-                    now);
+                IReadOnlyList<LotAllocation> allocations;
+                if (document.Type == InventoryDocumentType.Entry)
+                {
+                    var lotId = InventoryLotPersistence.Add(
+                        connection,
+                        change.Product.Id,
+                        change.SignedQuantity,
+                        change.Line.ExpirationDate,
+                        change.Line.LotCode ?? document.Reference,
+                        now,
+                        document.SupplierId,
+                        change.Line.ManufacturingDate,
+                        change.Line.UnitPrice);
+                    allocations = [new LotAllocation(lotId, change.SignedQuantity)];
+                }
+                else
+                {
+                    allocations = InventoryLotPersistence.ApplyStockChange(
+                        connection,
+                        change.Product.Id,
+                        change.SignedQuantity,
+                        document.Reference,
+                        now,
+                        allowExpiredLots);
+                }
                 UpdateStock(connection, change.Product.Id, change.ResultingStock, now);
-                ProductRepository.InsertMovement(
+                var movementId = ProductRepository.InsertMovement(
                     connection,
                     businessId,
                     change.Product.Id,
@@ -86,6 +107,7 @@ public sealed class InventoryTransactionService
                     document.Reference,
                     document.Notes,
                     now);
+                InventoryLotPersistence.RecordMovementAllocations(connection, movementId, allocations);
             }
 
             var changed = connection.Execute(
@@ -137,14 +159,36 @@ public sealed class InventoryTransactionService
             var now = SqliteValues.Date(DateTime.UtcNow);
             foreach (var change in changes)
             {
-                InventoryLotPersistence.ApplyStockChange(
+                var originalType = document.Type == InventoryDocumentType.Entry
+                    ? InventoryMovementType.Entry
+                    : InventoryMovementType.Sale;
+                var allocations = InventoryLotPersistence.GetMovementAllocations(
                     connection,
+                    businessId,
                     change.Product.Id,
-                    change.SignedQuantity,
-                    $"CANCELACION-{document.Reference}",
-                    now);
+                    document.Reference,
+                    originalType);
+                if (allocations.Count == 0)
+                {
+                    allocations = InventoryLotPersistence.ApplyStockChange(
+                        connection,
+                        change.Product.Id,
+                        change.SignedQuantity,
+                        $"CANCELACION-{document.Reference}",
+                        now,
+                        allowExpiredLots: true);
+                }
+                else if (document.Type == InventoryDocumentType.Entry)
+                {
+                    InventoryLotPersistence.ConsumeExact(connection, allocations, now);
+                }
+                else
+                {
+                    InventoryLotPersistence.RestoreExact(connection, allocations, now);
+                }
+
                 UpdateStock(connection, change.Product.Id, change.ResultingStock, now);
-                ProductRepository.InsertMovement(
+                var movementId = ProductRepository.InsertMovement(
                     connection,
                     businessId,
                     change.Product.Id,
@@ -155,6 +199,7 @@ public sealed class InventoryTransactionService
                     document.Reference,
                     reason.Trim(),
                     now);
+                InventoryLotPersistence.RecordMovementAllocations(connection, movementId, allocations);
             }
 
             var changed = connection.Execute(
@@ -250,10 +295,22 @@ public sealed class InventoryTransactionService
                     throw new InventoryRuleException("El costo o precio unitario no puede ser negativo.");
                 }
 
+                if (type == InventoryDocumentType.Entry)
+                {
+                    ValidateEntryLot(
+                        (ExpirationMode)product.ExpirationMode,
+                        line.ManufacturingDate,
+                        line.ExpirationDate,
+                        product.Name);
+                }
+
                 normalizedLines.Add(new InventoryDocumentLineInput(
                     line.ProductId,
                     quantity,
-                    decimal.Round(line.UnitPrice, 4, MidpointRounding.AwayFromZero)));
+                    decimal.Round(line.UnitPrice, 4, MidpointRounding.AwayFromZero),
+                    string.IsNullOrWhiteSpace(line.LotCode) ? null : line.LotCode.Trim(),
+                    line.ManufacturingDate,
+                    line.ExpirationDate));
             }
 
             var total = normalizedLines.Sum(line => line.Quantity * line.UnitPrice);
@@ -289,11 +346,18 @@ public sealed class InventoryTransactionService
             foreach (var line in normalizedLines)
             {
                 connection.Execute(
-                    "INSERT INTO inventory_document_lines(document_id,product_id,quantity_milli,unit_price_basis) VALUES(?,?,?,?);",
+                    """
+                    INSERT INTO inventory_document_lines(
+                        document_id,product_id,quantity_milli,unit_price_basis,lot_code,manufacturing_date,expiration_date)
+                    VALUES(?,?,?,?,?,?,?);
+                    """,
                     id,
                     line.ProductId,
                     SqliteValues.ToMilli(line.Quantity),
-                    SqliteValues.ToMoney(line.UnitPrice));
+                    SqliteValues.ToMoney(line.UnitPrice),
+                    ProductRepository.DbText(line.LotCode),
+                    line.ManufacturingDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                    line.ExpirationDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
             }
 
             return GetDocument(connection, businessId, id)!;
@@ -332,7 +396,7 @@ public sealed class InventoryTransactionService
                 (InventoryDocumentType.Sale, false) => InventoryMovementType.Sale,
                 _ => InventoryMovementType.SaleCancellation
             };
-            changes.Add(new StockChange(product, signedQuantity, resulting, movementType));
+            changes.Add(new StockChange(product, line, signedQuantity, resulting, movementType));
         }
 
         return changes;
@@ -362,7 +426,8 @@ public sealed class InventoryTransactionService
     {
         var lines = connection.Query<DocumentLineRow>(
             """
-            SELECT id Id,document_id DocumentId,product_id ProductId,quantity_milli QuantityMilli,unit_price_basis UnitPriceBasis
+            SELECT id Id,document_id DocumentId,product_id ProductId,quantity_milli QuantityMilli,unit_price_basis UnitPriceBasis,
+                   lot_code LotCode,manufacturing_date ManufacturingDate,expiration_date ExpirationDate
             FROM inventory_document_lines WHERE document_id=? ORDER BY id;
             """,
             row.Id);
@@ -386,7 +451,10 @@ public sealed class InventoryTransactionService
                 DocumentId = line.DocumentId,
                 ProductId = line.ProductId,
                 Quantity = SqliteValues.FromMilli(line.QuantityMilli),
-                UnitPrice = SqliteValues.FromMoney(line.UnitPriceBasis)
+                UnitPrice = SqliteValues.FromMoney(line.UnitPriceBasis),
+                LotCode = line.LotCode,
+                ManufacturingDate = line.ManufacturingDate is null ? null : DateOnly.ParseExact(line.ManufacturingDate, "yyyy-MM-dd", CultureInfo.InvariantCulture),
+                ExpirationDate = line.ExpirationDate is null ? null : DateOnly.ParseExact(line.ExpirationDate, "yyyy-MM-dd", CultureInfo.InvariantCulture)
             }).ToList()
         };
     }
@@ -401,8 +469,31 @@ public sealed class InventoryTransactionService
         FROM inventory_documents
         """;
 
+    private static void ValidateEntryLot(
+        ExpirationMode expirationMode,
+        DateOnly? manufacturingDate,
+        DateOnly? expirationDate,
+        string productName)
+    {
+        if (expirationMode == ExpirationMode.Tracked && expirationDate is null)
+        {
+            throw new InventoryRuleException($"La caducidad del lote de {productName} es obligatoria.");
+        }
+
+        if (manufacturingDate > DateOnly.FromDateTime(DateTime.Today))
+        {
+            throw new InventoryRuleException("La fecha de fabricación no puede estar en el futuro.");
+        }
+
+        if (manufacturingDate.HasValue && expirationDate.HasValue && expirationDate < manufacturingDate)
+        {
+            throw new InventoryRuleException("La caducidad no puede ser anterior a la fabricación.");
+        }
+    }
+
     private sealed record StockChange(
         Product Product,
+        InventoryDocumentLine Line,
         decimal SignedQuantity,
         decimal ResultingStock,
         InventoryMovementType MovementType);

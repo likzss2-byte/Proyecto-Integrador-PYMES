@@ -48,18 +48,20 @@ public sealed class InventoryAdjustmentService
             }
 
             var now = SqliteValues.Date(DateTime.UtcNow);
-            InventoryLotPersistence.ApplyStockChange(
+            var reference = $"AJU-{DateTime.UtcNow:yyyyMMddHHmmss}-{Guid.NewGuid().ToString("N")[..4].ToUpperInvariant()}";
+            var allocations = InventoryLotPersistence.ApplyStockChange(
                 connection,
                 product.Id,
                 quantity,
-                "AJUSTE-MANUAL",
-                now);
+                reference,
+                now,
+                allowExpiredLots: true);
             connection.Execute(
                 "UPDATE products SET stock_milli=?,updated_at=? WHERE id=?;",
                 SqliteValues.ToMilli(resulting),
                 now,
                 product.Id);
-            ProductRepository.InsertMovement(
+            var movementId = ProductRepository.InsertMovement(
                 connection,
                 businessId,
                 product.Id,
@@ -67,9 +69,10 @@ public sealed class InventoryAdjustmentService
                 quantity,
                 product.Stock,
                 resulting,
-                $"AJU-{DateTime.UtcNow:yyyyMMddHHmmss}-{Guid.NewGuid().ToString("N")[..4].ToUpperInvariant()}",
+                reference,
                 input.Reason.Trim(),
                 now);
+            InventoryLotPersistence.RecordMovementAllocations(connection, movementId, allocations);
             return ProductRepository.GetRow(connection, businessId, product.Id)!.ToDomain();
         }, cancellationToken);
     }
@@ -183,18 +186,19 @@ public sealed class InventoryAdjustmentService
             var now = SqliteValues.Date(DateTime.UtcNow);
             foreach (var change in changes.Where(change => change.Difference != 0))
             {
-                InventoryLotPersistence.ApplyStockChange(
+                var allocations = InventoryLotPersistence.ApplyStockChange(
                     connection,
                     change.Product.Id,
                     change.Difference,
                     count.Reference,
-                    now);
+                    now,
+                    allowExpiredLots: true);
                 connection.Execute(
                     "UPDATE products SET stock_milli=?,updated_at=? WHERE id=?;",
                     SqliteValues.ToMilli(change.Physical),
                     now,
                     change.Product.Id);
-                ProductRepository.InsertMovement(
+                var movementId = ProductRepository.InsertMovement(
                     connection,
                     businessId,
                     change.Product.Id,
@@ -205,6 +209,7 @@ public sealed class InventoryAdjustmentService
                     count.Reference,
                     count.Notes ?? "Conteo físico",
                     now);
+                InventoryLotPersistence.RecordMovementAllocations(connection, movementId, allocations);
             }
 
             var changed = connection.Execute(
@@ -260,7 +265,10 @@ public sealed class InventoryAdjustmentService
                 ResultingStock = SqliteValues.FromMilli(row.ResultingStockMilli),
                 Reference = row.Reference,
                 Reason = row.Reason,
-                OccurredAt = SqliteValues.ParseDate(row.OccurredAt)
+                OccurredAt = SqliteValues.ParseDate(row.OccurredAt),
+                LotAllocations = InventoryLotPersistence.GetMovementAllocations(connection, row.Id)
+                    .Select(allocation => new InventoryMovementLot(allocation.LotId, allocation.Quantity))
+                    .ToList()
             }).ToArray();
         }, cancellationToken);
 

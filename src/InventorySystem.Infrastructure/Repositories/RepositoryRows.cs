@@ -75,6 +75,9 @@ internal sealed class DocumentLineRow
     public long ProductId { get; set; }
     public long QuantityMilli { get; set; }
     public long UnitPriceBasis { get; set; }
+    public string? LotCode { get; set; }
+    public string? ManufacturingDate { get; set; }
+    public string? ExpirationDate { get; set; }
 }
 
 internal sealed class MovementRow

@@ -5,7 +5,7 @@ namespace InventorySystem.Infrastructure.Data;
 
 internal static class DatabaseMigrator
 {
-    public const int LatestSchemaVersion = 4;
+    public const int LatestSchemaVersion = 5;
 
     public static string? Migrate(string databasePath)
     {
@@ -55,6 +55,9 @@ internal static class DatabaseMigrator
                         break;
                     case 4:
                         CreateExpirationSchema(connection);
+                        break;
+                    case 5:
+                        CreatePurchaseOrderAndLotTraceabilitySchema(connection);
                         break;
                     default:
                         throw new InvalidOperationException($"No existe la migración {nextVersion}.");
@@ -404,6 +407,137 @@ internal static class DatabaseMigrator
             """,
             now,
             now);
+    }
+
+    private static void CreatePurchaseOrderAndLotTraceabilitySchema(SQLiteConnection connection)
+    {
+        AddColumnIfMissing(connection, "inventory_document_lines", "lot_code", "TEXT NULL COLLATE NOCASE");
+        AddColumnIfMissing(connection, "inventory_document_lines", "manufacturing_date", "TEXT NULL");
+        AddColumnIfMissing(connection, "inventory_document_lines", "expiration_date", "TEXT NULL");
+
+        ExecuteEach(connection,
+            """
+            CREATE TABLE IF NOT EXISTS purchase_orders (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                business_id INTEGER NOT NULL REFERENCES businesses(id),
+                folio TEXT NOT NULL COLLATE NOCASE,
+                supplier_id INTEGER NULL REFERENCES suppliers(id),
+                manual_supplier_name TEXT NULL,
+                order_date TEXT NOT NULL,
+                estimated_date TEXT NULL,
+                status INTEGER NOT NULL DEFAULT 1 CHECK(status BETWEEN 0 AND 5),
+                notes TEXT NULL,
+                total_basis INTEGER NOT NULL DEFAULT 0 CHECK(total_basis >= 0),
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                confirmed_at TEXT NULL,
+                cancelled_at TEXT NULL,
+                UNIQUE(business_id, folio),
+                CHECK(supplier_id IS NOT NULL OR manual_supplier_name IS NOT NULL)
+            );
+            """,
+            "CREATE INDEX IF NOT EXISTS ix_purchase_orders_status ON purchase_orders(business_id, status, order_date DESC);",
+            "CREATE INDEX IF NOT EXISTS ix_purchase_orders_supplier ON purchase_orders(supplier_id, status);",
+            """
+            CREATE TABLE IF NOT EXISTS purchase_order_lines (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                order_id INTEGER NOT NULL REFERENCES purchase_orders(id),
+                product_id INTEGER NULL REFERENCES products(id),
+                manual_description TEXT NULL,
+                barcode TEXT NULL COLLATE NOCASE,
+                sku TEXT NULL COLLATE NOCASE,
+                requested_milli INTEGER NOT NULL CHECK(requested_milli > 0),
+                received_milli INTEGER NOT NULL DEFAULT 0 CHECK(received_milli >= 0 AND received_milli <= requested_milli),
+                unit_of_measure INTEGER NOT NULL CHECK(unit_of_measure BETWEEN 0 AND 2),
+                estimated_cost_basis INTEGER NULL CHECK(estimated_cost_basis IS NULL OR estimated_cost_basis >= 0),
+                notes TEXT NULL,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                CHECK(product_id IS NOT NULL OR (manual_description IS NOT NULL AND trim(manual_description) <> ''))
+            );
+            """,
+            "CREATE INDEX IF NOT EXISTS ix_purchase_order_lines_order ON purchase_order_lines(order_id, id);",
+            "CREATE INDEX IF NOT EXISTS ix_purchase_order_lines_product ON purchase_order_lines(product_id, order_id);",
+            """
+            CREATE TABLE IF NOT EXISTS purchase_receipts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                business_id INTEGER NOT NULL REFERENCES businesses(id),
+                order_id INTEGER NOT NULL REFERENCES purchase_orders(id),
+                reference TEXT NOT NULL COLLATE NOCASE,
+                operation_key TEXT NOT NULL COLLATE NOCASE,
+                notes TEXT NULL,
+                received_at TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                UNIQUE(business_id, reference),
+                UNIQUE(business_id, operation_key)
+            );
+            """,
+            "CREATE INDEX IF NOT EXISTS ix_purchase_receipts_order ON purchase_receipts(order_id, received_at DESC);",
+            "CREATE INDEX IF NOT EXISTS ix_purchase_receipts_date ON purchase_receipts(business_id, received_at DESC);");
+
+        AddColumnIfMissing(connection, "inventory_lots", "supplier_id", "INTEGER NULL REFERENCES suppliers(id)");
+        AddColumnIfMissing(connection, "inventory_lots", "manufacturing_date", "TEXT NULL");
+        AddColumnIfMissing(connection, "inventory_lots", "initial_quantity_milli", "INTEGER NOT NULL DEFAULT 0 CHECK(initial_quantity_milli >= 0)");
+        AddColumnIfMissing(connection, "inventory_lots", "unit_cost_basis", "INTEGER NULL CHECK(unit_cost_basis IS NULL OR unit_cost_basis >= 0)");
+        AddColumnIfMissing(connection, "inventory_lots", "status", "INTEGER NOT NULL DEFAULT 0 CHECK(status BETWEEN 0 AND 1)");
+        AddColumnIfMissing(connection, "inventory_lots", "purchase_order_id", "INTEGER NULL REFERENCES purchase_orders(id)");
+        AddColumnIfMissing(connection, "inventory_lots", "receipt_id", "INTEGER NULL REFERENCES purchase_receipts(id)");
+
+        connection.Execute(
+            """
+            UPDATE inventory_lots
+            SET initial_quantity_milli=quantity_milli
+            WHERE initial_quantity_milli=0 AND quantity_milli>0;
+            """);
+        connection.Execute(
+            "UPDATE inventory_lots SET status=CASE WHEN quantity_milli=0 THEN 1 ELSE 0 END;");
+
+        ExecuteEach(connection,
+            "CREATE INDEX IF NOT EXISTS ix_inventory_lots_supplier ON inventory_lots(supplier_id, product_id);",
+            "CREATE INDEX IF NOT EXISTS ix_inventory_lots_code ON inventory_lots(product_id, lot_code);",
+            "CREATE INDEX IF NOT EXISTS ix_inventory_lots_order ON inventory_lots(purchase_order_id);",
+            "CREATE INDEX IF NOT EXISTS ix_inventory_lots_receipt ON inventory_lots(receipt_id);",
+            """
+            CREATE TABLE IF NOT EXISTS purchase_receipt_lines (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                receipt_id INTEGER NOT NULL REFERENCES purchase_receipts(id),
+                order_line_id INTEGER NOT NULL REFERENCES purchase_order_lines(id),
+                product_id INTEGER NOT NULL REFERENCES products(id),
+                lot_id INTEGER NOT NULL REFERENCES inventory_lots(id),
+                quantity_milli INTEGER NOT NULL CHECK(quantity_milli > 0),
+                unit_cost_basis INTEGER NULL CHECK(unit_cost_basis IS NULL OR unit_cost_basis >= 0),
+                UNIQUE(receipt_id, order_line_id)
+            );
+            """,
+            "CREATE INDEX IF NOT EXISTS ix_purchase_receipt_lines_receipt ON purchase_receipt_lines(receipt_id, id);",
+            "CREATE INDEX IF NOT EXISTS ix_purchase_receipt_lines_order_line ON purchase_receipt_lines(order_line_id);",
+            """
+            CREATE TABLE IF NOT EXISTS inventory_movement_lots (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                movement_id INTEGER NOT NULL REFERENCES inventory_movements(id),
+                lot_id INTEGER NOT NULL REFERENCES inventory_lots(id),
+                quantity_milli INTEGER NOT NULL CHECK(quantity_milli > 0),
+                UNIQUE(movement_id, lot_id)
+            );
+            """,
+            "CREATE INDEX IF NOT EXISTS ix_inventory_movement_lots_movement ON inventory_movement_lots(movement_id);",
+            "CREATE INDEX IF NOT EXISTS ix_inventory_movement_lots_lot ON inventory_movement_lots(lot_id);");
+    }
+
+    private static void AddColumnIfMissing(
+        SQLiteConnection connection,
+        string tableName,
+        string columnName,
+        string definition)
+    {
+        if (ColumnExists(connection, tableName, columnName))
+        {
+            return;
+        }
+
+        var safeTable = tableName.Replace("\"", "\"\"", StringComparison.Ordinal);
+        var safeColumn = columnName.Replace("\"", "\"\"", StringComparison.Ordinal);
+        connection.Execute($"ALTER TABLE \"{safeTable}\" ADD COLUMN \"{safeColumn}\" {definition};");
     }
 
     private static bool TableExists(SQLiteConnection connection, string tableName) =>
