@@ -36,5 +36,9 @@
         ContentTemplate="{DataTemplate pages:NewItemPage}"
         Route="NewItemPage">
 	</ShellContent>
+	<ShellContent
+		ContentTemplate="{DataTemplate pages:PurveyorFullPage}"
+		Route="PurveyorFullPage">
+	</ShellContent>
 
 </Shell>

@@ -7,7 +7,7 @@ namespace InventorySystem.Objects.InventoryData
 		[PrimaryKey, AutoIncrement]
 		public int ItemID { get; set; }
 		[Unique, NotNull]
-		public string ItemName { get; set; }
+		public string ItemName { get; set; } = string.Empty;
 		public string? ItemDescription { get; set; }
 		[NotNull]
 		public decimal SalePrice { get; set; }
@@ -23,7 +23,7 @@ namespace InventorySystem.Objects.InventoryData
 		[NotNull]
 		public int ItemID { get; set; }
 		[NotNull]
-		public string Tag { get; set; }
+		public string Tag { get; set; } = string.Empty;
 	}
 	public class ItemPurveyor
 	{
