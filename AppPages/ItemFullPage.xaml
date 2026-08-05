@@ -8,6 +8,19 @@
             <Label x:Name="ProductNameLabel" FontSize="Large" FontAttributes="Bold" />
             <Label x:Name="ProductCodeLabel" />
             <Label x:Name="ProductStockLabel" FontAttributes="Bold" />
+            <Label x:Name="ExpirationStatusLabel" />
+
+            <Label Text="Entrada por lote / caducidad" FontAttributes="Bold" Margin="0,12,0,0" />
+            <Picker x:Name="ExpirationModePicker" Title="Manejo de caducidad">
+                <Picker.Items>
+                    <x:String>Con fecha de caducidad</x:String>
+                    <x:String>No perecedero</x:String>
+                </Picker.Items>
+            </Picker>
+            <DatePicker x:Name="LotExpirationDate" />
+            <Entry x:Name="LotCodeEntry" Placeholder="Código de lote (opcional)" />
+            <Entry x:Name="LotQuantityEntry" Placeholder="Cantidad recibida; vacío para clasificar stock actual" Keyboard="Numeric" />
+            <Button Text="Guardar lote o clasificación" Clicked="SaveLot_Clicked" />
 
             <Label Text="Ajuste manual" FontAttributes="Bold" Margin="0,12,0,0" />
             <Entry x:Name="AdjustmentQuantity" Placeholder="Cantidad positiva o negativa" Keyboard="Numeric" />

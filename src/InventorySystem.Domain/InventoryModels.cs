@@ -9,6 +9,13 @@ public enum UnitOfMeasure
     Liter = 2
 }
 
+public enum ExpirationMode
+{
+    Unknown = 0,
+    Tracked = 1,
+    NotApplicable = 2
+}
+
 public enum InventoryDocumentType
 {
     Entry = 0,
@@ -62,6 +69,9 @@ public sealed class Product
     public decimal Stock { get; set; }
     public decimal MinimumStock { get; set; }
     public decimal SalePrice { get; set; }
+    public ExpirationMode ExpirationMode { get; set; }
+    public DateOnly? NearestExpirationDate { get; set; }
+    public decimal UndatedStock { get; set; }
     public bool Active { get; set; } = true;
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
@@ -74,6 +84,31 @@ public sealed class Product
         _ => Stock.ToString("0.###", CultureInfo.CurrentCulture)
     };
 }
+
+public sealed class InventoryLot
+{
+    public long Id { get; set; }
+    public long ProductId { get; set; }
+    public string? LotCode { get; set; }
+    public decimal Quantity { get; set; }
+    public DateOnly? ExpirationDate { get; set; }
+    public DateTime ReceivedAt { get; set; }
+}
+
+public sealed record ExpirationAlert(
+    long ProductId,
+    string ProductName,
+    string Code,
+    string? LotCode,
+    decimal Quantity,
+    UnitOfMeasure UnitOfMeasure,
+    DateOnly ExpirationDate);
+
+public sealed record ExpirationSummary(
+    int ExpiredProducts,
+    int ExpiringProducts,
+    int MissingDateProducts,
+    int NeedsSetupProducts);
 
 public sealed class Supplier
 {

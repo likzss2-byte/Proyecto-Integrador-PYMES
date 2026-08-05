@@ -48,6 +48,12 @@ public sealed class InventoryAdjustmentService
             }
 
             var now = SqliteValues.Date(DateTime.UtcNow);
+            InventoryLotPersistence.ApplyStockChange(
+                connection,
+                product.Id,
+                quantity,
+                "AJUSTE-MANUAL",
+                now);
             connection.Execute(
                 "UPDATE products SET stock_milli=?,updated_at=? WHERE id=?;",
                 SqliteValues.ToMilli(resulting),
@@ -177,6 +183,12 @@ public sealed class InventoryAdjustmentService
             var now = SqliteValues.Date(DateTime.UtcNow);
             foreach (var change in changes.Where(change => change.Difference != 0))
             {
+                InventoryLotPersistence.ApplyStockChange(
+                    connection,
+                    change.Product.Id,
+                    change.Difference,
+                    count.Reference,
+                    now);
                 connection.Execute(
                     "UPDATE products SET stock_milli=?,updated_at=? WHERE id=?;",
                     SqliteValues.ToMilli(change.Physical),

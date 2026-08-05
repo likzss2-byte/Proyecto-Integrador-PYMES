@@ -412,6 +412,63 @@ public sealed class InventoryLogicTests
         Assert.Single(await context.Adjustments.GetMovementsAsync(context.Business.Id));
     }
 
+    [Fact]
+    public async Task Existencia_inicial_se_clasifica_y_genera_alerta_de_caducidad()
+    {
+        await using var context = await TestContext.CreateAsync();
+        var product = await context.CreateProductAsync("SKU-CAD", stock: 3);
+        Assert.Equal(3, product.UndatedStock);
+
+        var expiration = DateOnly.FromDateTime(DateTime.Today).AddDays(5);
+        product = await context.Lots.ClassifyUndatedStockAsync(
+            context.Business.Id,
+            product.Id,
+            ExpirationMode.Tracked,
+            expiration,
+            "LOTE-INICIAL");
+        var alert = Assert.Single(await context.Lots.GetAlertsAsync(context.Business.Id));
+
+        Assert.Equal(0, product.UndatedStock);
+        Assert.Equal(expiration, product.NearestExpirationDate);
+        Assert.Equal("LOTE-INICIAL", alert.LotCode);
+    }
+
+    [Fact]
+    public async Task Salida_consume_primero_el_lote_que_caduca_FEFO()
+    {
+        await using var context = await TestContext.CreateAsync();
+        var product = await context.CreateProductAsync("SKU-FEFO");
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        await context.Lots.ReceiveAsync(context.Business.Id, product.Id, 5, ExpirationMode.Tracked, today.AddDays(5), "PRIMERO");
+        await context.Lots.ReceiveAsync(context.Business.Id, product.Id, 5, ExpirationMode.Tracked, today.AddDays(30), "DESPUES");
+        var sale = await context.Transactions.CreateSaleAsync(context.Business.Id, [new(product.Id, 4, 1)]);
+
+        await context.Transactions.ConfirmAsync(context.Business.Id, sale.Id);
+        var lots = await context.Lots.GetLotsAsync(context.Business.Id, product.Id);
+
+        Assert.Equal(2, lots.Count);
+        Assert.Equal("PRIMERO", lots[0].LotCode);
+        Assert.Equal(1, lots[0].Quantity);
+        Assert.Equal(5, lots[1].Quantity);
+    }
+
+    [Fact]
+    public async Task Producto_no_perecedero_no_genera_alertas()
+    {
+        await using var context = await TestContext.CreateAsync();
+        var product = await context.CreateProductAsync("SKU-NP", stock: 2);
+        await context.Lots.ClassifyUndatedStockAsync(
+            context.Business.Id,
+            product.Id,
+            ExpirationMode.NotApplicable);
+
+        var summary = await context.Lots.GetSummaryAsync(context.Business.Id);
+
+        Assert.Empty(await context.Lots.GetAlertsAsync(context.Business.Id));
+        Assert.Equal(0, summary.NeedsSetupProducts);
+        Assert.Equal(0, summary.MissingDateProducts);
+    }
+
     private sealed class FakeExternalCatalog(ExternalProduct? result) : IExternalProductCatalog
     {
         public Task<ExternalProduct?> FindAsync(string barcode, CancellationToken cancellationToken = default) =>
@@ -438,6 +495,7 @@ internal sealed class TestContext : IAsyncDisposable
         Suppliers = new SupplierRepository(database);
         Transactions = new InventoryTransactionService(database);
         Adjustments = new InventoryAdjustmentService(database);
+        Lots = new InventoryLotService(database);
         Businesses = new BusinessService(database);
         Lookup = new ProductLookupService(database, Products, externalCatalog);
     }
@@ -447,6 +505,7 @@ internal sealed class TestContext : IAsyncDisposable
     public SupplierRepository Suppliers { get; }
     public InventoryTransactionService Transactions { get; }
     public InventoryAdjustmentService Adjustments { get; }
+    public InventoryLotService Lots { get; }
     public BusinessService Businesses { get; }
     public ProductLookupService Lookup { get; }
     public Business Business { get; private set; } = null!;

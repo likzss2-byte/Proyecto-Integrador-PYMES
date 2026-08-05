@@ -5,7 +5,7 @@ namespace InventorySystem.Infrastructure.Data;
 
 internal static class DatabaseMigrator
 {
-    public const int LatestSchemaVersion = 3;
+    public const int LatestSchemaVersion = 4;
 
     public static string? Migrate(string databasePath)
     {
@@ -52,6 +52,9 @@ internal static class DatabaseMigrator
                         break;
                     case 3:
                         CreateAuditGuards(connection);
+                        break;
+                    case 4:
+                        CreateExpirationSchema(connection);
                         break;
                     default:
                         throw new InvalidOperationException($"No existe la migración {nextVersion}.");
@@ -364,6 +367,43 @@ internal static class DatabaseMigrator
                 SELECT RAISE(ABORT, 'Los movimientos de inventario son inmutables');
             END;
             """);
+    }
+
+    private static void CreateExpirationSchema(SQLiteConnection connection)
+    {
+        if (!ColumnExists(connection, "products", "expiration_mode"))
+        {
+            connection.Execute(
+                "ALTER TABLE products ADD COLUMN expiration_mode INTEGER NOT NULL DEFAULT 0 CHECK(expiration_mode BETWEEN 0 AND 2);");
+        }
+
+        ExecuteEach(connection,
+            """
+            CREATE TABLE IF NOT EXISTS inventory_lots (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                product_id INTEGER NOT NULL REFERENCES products(id),
+                lot_code TEXT NULL COLLATE NOCASE,
+                quantity_milli INTEGER NOT NULL CHECK(quantity_milli >= 0),
+                expiration_date TEXT NULL,
+                received_at TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            );
+            """,
+            "CREATE INDEX IF NOT EXISTS ix_inventory_lots_product ON inventory_lots(product_id, quantity_milli);",
+            "CREATE INDEX IF NOT EXISTS ix_inventory_lots_expiration ON inventory_lots(expiration_date, quantity_milli);");
+
+        var now = SqliteValues.Date(DateTime.UtcNow);
+        connection.Execute(
+            """
+            INSERT INTO inventory_lots(product_id,lot_code,quantity_milli,expiration_date,received_at,created_at,updated_at)
+            SELECT p.id,'EXISTENCIA-INICIAL',p.stock_milli,NULL,p.created_at,?,?
+            FROM products p
+            WHERE p.stock_milli>0
+              AND NOT EXISTS(SELECT 1 FROM inventory_lots l WHERE l.product_id=p.id);
+            """,
+            now,
+            now);
     }
 
     private static bool TableExists(SQLiteConnection connection, string tableName) =>

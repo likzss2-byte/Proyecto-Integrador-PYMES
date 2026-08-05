@@ -68,6 +68,12 @@ public sealed class InventoryTransactionService
             var now = SqliteValues.Date(DateTime.UtcNow);
             foreach (var change in changes)
             {
+                InventoryLotPersistence.ApplyStockChange(
+                    connection,
+                    change.Product.Id,
+                    change.SignedQuantity,
+                    document.Reference,
+                    now);
                 UpdateStock(connection, change.Product.Id, change.ResultingStock, now);
                 ProductRepository.InsertMovement(
                     connection,
@@ -131,6 +137,12 @@ public sealed class InventoryTransactionService
             var now = SqliteValues.Date(DateTime.UtcNow);
             foreach (var change in changes)
             {
+                InventoryLotPersistence.ApplyStockChange(
+                    connection,
+                    change.Product.Id,
+                    change.SignedQuantity,
+                    $"CANCELACION-{document.Reference}",
+                    now);
                 UpdateStock(connection, change.Product.Id, change.ResultingStock, now);
                 ProductRepository.InsertMovement(
                     connection,

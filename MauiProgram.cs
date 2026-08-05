@@ -30,6 +30,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<BusinessService>();
         builder.Services.AddSingleton<InventoryTransactionService>();
         builder.Services.AddSingleton<InventoryAdjustmentService>();
+        builder.Services.AddSingleton<InventoryLotService>();
         builder.Services.AddSingleton<BarcodeReadGuard>();
         builder.Services.AddSingleton<BarcodeScannerService>();
         builder.Services.AddSingleton(new HttpClient { Timeout = Timeout.InfiniteTimeSpan });

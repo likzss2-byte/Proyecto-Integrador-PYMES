@@ -10,16 +10,23 @@ public partial class ItemFullPage : ContentPage, IQueryAttributable
     private readonly ProductRepository _products;
     private readonly BusinessService _businesses;
     private readonly InventoryAdjustmentService _adjustments;
+    private readonly InventoryLotService _lots;
     private long _businessId;
     private long _productId;
     private long? _pendingCountId;
 
-    public ItemFullPage(ProductRepository products, BusinessService businesses, InventoryAdjustmentService adjustments)
+    public ItemFullPage(
+        ProductRepository products,
+        BusinessService businesses,
+        InventoryAdjustmentService adjustments,
+        InventoryLotService lots)
     {
         InitializeComponent();
         _products = products;
         _businesses = businesses;
         _adjustments = adjustments;
+        _lots = lots;
+        ExpirationModePicker.SelectedIndex = 0;
     }
 
     public void ApplyQueryAttributes(IDictionary<string, object> query)
@@ -59,6 +66,46 @@ public partial class ItemFullPage : ContentPage, IQueryAttributable
         catch (Exception error)
         {
             await DisplayAlertAsync("Ajuste", error.Message, "Aceptar");
+        }
+    }
+
+    private async void SaveLot_Clicked(object? sender, EventArgs e)
+    {
+        try
+        {
+            var mode = ExpirationModePicker.SelectedIndex == 1
+                ? ExpirationMode.NotApplicable
+                : ExpirationMode.Tracked;
+            DateOnly? date = mode == ExpirationMode.Tracked
+                ? DateOnly.FromDateTime(LotExpirationDate.Date ?? DateTime.Today)
+                : null;
+            if (string.IsNullOrWhiteSpace(LotQuantityEntry.Text))
+            {
+                await _lots.ClassifyUndatedStockAsync(
+                    _businessId,
+                    _productId,
+                    mode,
+                    date,
+                    LotCodeEntry.Text);
+            }
+            else
+            {
+                await _lots.ReceiveAsync(
+                    _businessId,
+                    _productId,
+                    ParseDecimal(LotQuantityEntry.Text, "Captura una cantidad válida."),
+                    mode,
+                    date,
+                    LotCodeEntry.Text);
+            }
+
+            LotQuantityEntry.Text = string.Empty;
+            LotCodeEntry.Text = string.Empty;
+            await RefreshAsync();
+        }
+        catch (Exception error)
+        {
+            await DisplayAlertAsync("Caducidad", error.Message, "Aceptar");
         }
     }
 
@@ -124,6 +171,13 @@ public partial class ItemFullPage : ContentPage, IQueryAttributable
         ProductNameLabel.Text = product.Name;
         ProductCodeLabel.Text = $"SKU: {product.Sku} · Código: {product.Barcode ?? "Sin código"}";
         ProductStockLabel.Text = $"Existencia: {product.DisplayStock} · Mínimo: {product.MinimumStock:0.###}";
+        ExpirationStatusLabel.Text = product.ExpirationMode switch
+        {
+            ExpirationMode.Tracked when product.UndatedStock > 0 => $"Caducidad: faltan fechas para {product.UndatedStock:0.###}",
+            ExpirationMode.Tracked when product.NearestExpirationDate.HasValue => $"Próxima caducidad: {product.NearestExpirationDate:dd/MM/yyyy}",
+            ExpirationMode.NotApplicable => "Caducidad: no aplica",
+            _ => "Caducidad: por configurar"
+        };
         MovementList.ItemsSource = await _adjustments.GetMovementsAsync(_businessId, _productId);
     }
 

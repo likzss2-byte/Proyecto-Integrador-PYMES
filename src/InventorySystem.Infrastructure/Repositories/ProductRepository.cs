@@ -89,6 +89,13 @@ public sealed class ProductRepository
                 id = connection.ExecuteScalar<long>("SELECT last_insert_rowid();");
                 if (initialStock != 0)
                 {
+                    InventoryLotPersistence.Add(
+                        connection,
+                        id,
+                        initialStock,
+                        null,
+                        "EXISTENCIA-INICIAL",
+                        now);
                     InsertMovement(
                         connection,
                         businessId,

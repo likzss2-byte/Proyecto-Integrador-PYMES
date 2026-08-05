@@ -15,6 +15,9 @@ internal sealed class ProductRow
     public long StockMilli { get; set; }
     public long MinimumStockMilli { get; set; }
     public long SalePriceBasis { get; set; }
+    public int ExpirationMode { get; set; }
+    public string? NearestExpirationDate { get; set; }
+    public long UndatedStockMilli { get; set; }
     public int Active { get; set; }
     public string CreatedAt { get; set; } = string.Empty;
     public string UpdatedAt { get; set; } = string.Empty;
@@ -118,7 +121,9 @@ internal static class RepositoryRowMapper
     public const string ProductColumns = """
         id Id,business_id BusinessId,sku Sku,barcode Barcode,name Name,description Description,
         brand Brand,unit_of_measure UnitOfMeasure,stock_milli StockMilli,
-        minimum_stock_milli MinimumStockMilli,sale_price_basis SalePriceBasis,
+        minimum_stock_milli MinimumStockMilli,sale_price_basis SalePriceBasis,expiration_mode ExpirationMode,
+        (SELECT MIN(l.expiration_date) FROM inventory_lots l WHERE l.product_id=products.id AND l.quantity_milli>0 AND l.expiration_date IS NOT NULL) NearestExpirationDate,
+        COALESCE((SELECT SUM(l.quantity_milli) FROM inventory_lots l WHERE l.product_id=products.id AND l.quantity_milli>0 AND l.expiration_date IS NULL),0) UndatedStockMilli,
         active Active,created_at CreatedAt,updated_at UpdatedAt
         """;
 
@@ -141,6 +146,11 @@ internal static class RepositoryRowMapper
         Stock = Data.SqliteValues.FromMilli(row.StockMilli),
         MinimumStock = Data.SqliteValues.FromMilli(row.MinimumStockMilli),
         SalePrice = Data.SqliteValues.FromMoney(row.SalePriceBasis),
+        ExpirationMode = (ExpirationMode)row.ExpirationMode,
+        NearestExpirationDate = row.NearestExpirationDate is null
+            ? null
+            : DateOnly.ParseExact(row.NearestExpirationDate, "yyyy-MM-dd"),
+        UndatedStock = Data.SqliteValues.FromMilli(row.UndatedStockMilli),
         Active = row.Active == 1,
         CreatedAt = Data.SqliteValues.ParseDate(row.CreatedAt),
         UpdatedAt = Data.SqliteValues.ParseDate(row.UpdatedAt)
