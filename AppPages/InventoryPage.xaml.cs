@@ -87,11 +87,11 @@ public partial class InventoryPage : ContentPage
     }
 
     private async void OpenSupplierInventory_Clicked(object? sender, EventArgs e) =>
-        await Shell.Current.GoToAsync("//SupplierInventoryPage");
+        await Shell.Current.GoToAsync(nameof(SupplierInventoryPage));
 
     private async void OpenBrandInventory_Clicked(object? sender, EventArgs e) =>
-        await Shell.Current.GoToAsync("//BrandInventoryPage");
+        await Shell.Current.GoToAsync(nameof(BrandInventoryPage));
 
     private async void OpenOperationalInventory_Clicked(object? sender, EventArgs e) =>
-        await Shell.Current.GoToAsync("//OperationalInventoryPage");
+        await Shell.Current.GoToAsync(nameof(OperationalInventoryPage));
 }
