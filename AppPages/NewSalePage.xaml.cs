@@ -28,7 +28,6 @@ public partial class NewSalePage : ContentPage
         _businesses = businesses;
         _readGuard = readGuard;
         LineList.ItemsSource = _lines;
-        QuantityEntry.Text = "1";
     }
 
     protected override async void OnAppearing()
@@ -40,7 +39,7 @@ public partial class NewSalePage : ContentPage
         }
         catch (Exception error)
         {
-            await DisplayAlertAsync("Venta", error.Message, "Aceptar");
+            ResultLabel.Text = error.Message;
         }
     }
 
@@ -56,6 +55,7 @@ public partial class NewSalePage : ContentPage
 
         try
         {
+            ResultLabel.Text = string.Empty;
             var product = await _products.FindByCodeAsync(_businessId, code);
             if (product is null)
             {
@@ -89,7 +89,7 @@ public partial class NewSalePage : ContentPage
 
             _lines.Add(new OperationLineView { Product = product, Quantity = quantity, UnitPrice = price });
             ProductCodeEntry.Text = string.Empty;
-            QuantityEntry.Text = "1";
+            QuantityEntry.Text = string.Empty;
             UnitPriceEntry.Text = string.Empty;
             _readGuard.Reset("venta");
             UpdateTotal();
@@ -113,21 +113,42 @@ public partial class NewSalePage : ContentPage
     {
         try
         {
+            ConfirmSaleButton.IsEnabled = false;
+            var allowExpired = AllowExpiredLotsCheck.IsChecked;
+            if (allowExpired)
+            {
+                var confirmed = await DisplayAlertAsync(
+                    "Despacho de producto caducado",
+                    "Has autorizado usar lotes caducados si no alcanza el inventario vigente. ¿Deseas continuar?",
+                    "Sí, continuar",
+                    "Cancelar");
+                if (!confirmed)
+                {
+                    return;
+                }
+            }
+
             var document = await _transactions.CreateSaleAsync(
                 _businessId,
                 _lines.Select(line => new InventoryDocumentLineInput(line.Product.Id, line.Quantity, line.UnitPrice)),
                 NotesEntry.Text);
-            document = await _transactions.ConfirmAsync(_businessId, document.Id);
+            document = await _transactions.ConfirmAsync(_businessId, document.Id, allowExpired);
             _lastConfirmedSaleId = document.Id;
+            ResultLabel.Style = (Style)Application.Current!.Resources["InfoText"];
             ResultLabel.Text = $"Venta {document.Reference} confirmada por {document.Total:C}.";
-            CancelReasonEntry.IsVisible = true;
-            CancelSaleButton.IsVisible = true;
+            CancellationPanel.IsVisible = true;
             _lines.Clear();
+            AllowExpiredLotsCheck.IsChecked = false;
             UpdateTotal();
         }
         catch (Exception error)
         {
-            await DisplayAlertAsync("Venta", error.Message, "Aceptar");
+            ResultLabel.Style = (Style)Application.Current!.Resources["ErrorText"];
+            ResultLabel.Text = error.Message;
+        }
+        finally
+        {
+            ConfirmSaleButton.IsEnabled = true;
         }
     }
 
@@ -144,15 +165,14 @@ public partial class NewSalePage : ContentPage
                 _businessId,
                 _lastConfirmedSaleId.Value,
                 CancelReasonEntry.Text ?? string.Empty);
-            ResultLabel.Text = $"Venta {cancelled.Reference} cancelada y stock repuesto.";
+            ResultLabel.Text = $"Venta {cancelled.Reference} cancelada y stock repuesto en sus lotes originales.";
             _lastConfirmedSaleId = null;
             CancelReasonEntry.Text = string.Empty;
-            CancelReasonEntry.IsVisible = false;
-            CancelSaleButton.IsVisible = false;
+            CancellationPanel.IsVisible = false;
         }
         catch (Exception error)
         {
-            await DisplayAlertAsync("Cancelación", error.Message, "Aceptar");
+            ResultLabel.Text = error.Message;
         }
     }
 

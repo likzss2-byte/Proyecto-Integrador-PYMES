@@ -28,9 +28,8 @@ public partial class NewItemPage : ContentPage
         _readGuard = readGuard;
         _businesses = businesses;
         UnitPicker.SelectedIndex = 0;
-        InitialStockEntry.Text = "0";
-        MinimumStockEntry.Text = "0";
-        SalePriceEntry.Text = "0";
+        ExpirationModePicker.SelectedIndex = 0;
+        InitialExpirationDatePicker.Date = DateTime.Today.AddDays(30);
     }
 
     protected override async void OnAppearing()
@@ -42,7 +41,7 @@ public partial class NewItemPage : ContentPage
         }
         catch (Exception error)
         {
-            await DisplayAlertAsync("Producto", error.Message, "Aceptar");
+            FormErrorLabel.Text = error.Message;
         }
     }
 
@@ -67,7 +66,7 @@ public partial class NewItemPage : ContentPage
             var result = await _scanner.DecodeImageAsync(selected.FullPath);
             if (!result.Success)
             {
-                await DisplayAlertAsync("Lectura", result.Error ?? "No se detectó un código.", "Aceptar");
+                LookupMessage.Text = result.Error ?? "No se detectó un código.";
                 return;
             }
 
@@ -76,7 +75,7 @@ public partial class NewItemPage : ContentPage
         }
         catch (Exception error) when (error is not InventoryRuleException)
         {
-            await DisplayAlertAsync("Lectura", $"No se pudo abrir la imagen. {error.Message}", "Aceptar");
+            LookupMessage.Text = $"No se pudo abrir la imagen. {error.Message}";
         }
     }
 
@@ -118,7 +117,7 @@ public partial class NewItemPage : ContentPage
             }
 
             BarcodeEntry.Text = code;
-            LookupMessage.Text = "Código desconocido. Completa el formulario para registrarlo; no se guardó automáticamente.";
+            LookupMessage.Text = "Código desconocido. Completa el formulario; no se guardó automáticamente.";
         }
         catch (Exception error)
         {
@@ -130,6 +129,18 @@ public partial class NewItemPage : ContentPage
     {
         try
         {
+            ClearValidationMessages();
+            SaveProductButton.IsEnabled = false;
+            if (ExpirationModePicker.SelectedIndex <= 0)
+            {
+                ExpirationModeErrorLabel.Text = "Selecciona si el producto controla caducidad.";
+                return;
+            }
+
+            var expirationMode = ExpirationModePicker.SelectedIndex == 1
+                ? ExpirationMode.Tracked
+                : ExpirationMode.NotApplicable;
+            var initialStock = ParseOptionalDecimal(InitialStockEntry.Text, "El inventario inicial no es válido.") ?? 0m;
             var input = new ProductInput(
                 SkuEntry.Text ?? string.Empty,
                 BarcodeEntry.Text,
@@ -137,21 +148,30 @@ public partial class NewItemPage : ContentPage
                 DescriptionEntry.Text,
                 BrandEntry.Text,
                 (UnitOfMeasure)Math.Max(UnitPicker.SelectedIndex, 0),
-                ParseDecimal(MinimumStockEntry.Text, "El stock mínimo no es válido."),
-                ParseDecimal(SalePriceEntry.Text, "El precio de venta no es válido."),
-                ActiveSwitch.IsToggled);
-            var saved = await _products.SaveAsync(
-                _businessId,
-                input,
-                ParseDecimal(InitialStockEntry.Text, "El inventario inicial no es válido."));
+                ParseOptionalDecimal(MinimumStockEntry.Text, "El stock mínimo no es válido.") ?? 0m,
+                ParseOptionalDecimal(SalePriceEntry.Text, "El precio de venta no es válido.") ?? 0m,
+                ActiveSwitch.IsToggled,
+                expirationMode,
+                expirationMode == ExpirationMode.Tracked && initialStock > 0
+                    ? DateOnly.FromDateTime(InitialExpirationDatePicker.Date ?? DateTime.Today)
+                    : null,
+                InitialLotCodeEntry.Text);
+            var saved = await _products.SaveAsync(_businessId, input, initialStock);
             await DisplayAlertAsync("Producto", $"{saved.Name} se guardó correctamente.", "Aceptar");
             ClearForm();
         }
         catch (Exception error)
         {
-            await DisplayAlertAsync("Producto", error.Message, "Aceptar");
+            ShowValidationError(error.Message);
+        }
+        finally
+        {
+            SaveProductButton.IsEnabled = true;
         }
     }
+
+    private void ExpirationModePicker_Changed(object? sender, EventArgs e) =>
+        ExpirationDetailsPanel.IsVisible = ExpirationModePicker.SelectedIndex == 1;
 
     private void Populate(Product product)
     {
@@ -161,6 +181,12 @@ public partial class NewItemPage : ContentPage
         BrandEntry.Text = product.Brand;
         DescriptionEntry.Text = product.Description;
         UnitPicker.SelectedIndex = (int)product.UnitOfMeasure;
+        ExpirationModePicker.SelectedIndex = product.ExpirationMode switch
+        {
+            ExpirationMode.Tracked => 1,
+            ExpirationMode.NotApplicable => 2,
+            _ => 0
+        };
         MinimumStockEntry.Text = product.MinimumStock.ToString(CultureInfo.CurrentCulture);
         SalePriceEntry.Text = product.SalePrice.ToString(CultureInfo.CurrentCulture);
         ActiveSwitch.IsToggled = product.Active;
@@ -189,11 +215,51 @@ public partial class NewItemPage : ContentPage
         BrandEntry.Text = string.Empty;
         DescriptionEntry.Text = string.Empty;
         UnitPicker.SelectedIndex = 0;
-        InitialStockEntry.Text = "0";
-        MinimumStockEntry.Text = "0";
-        SalePriceEntry.Text = "0";
+        ExpirationModePicker.SelectedIndex = 0;
+        InitialStockEntry.Text = string.Empty;
+        MinimumStockEntry.Text = string.Empty;
+        SalePriceEntry.Text = string.Empty;
+        InitialLotCodeEntry.Text = string.Empty;
+        InitialExpirationDatePicker.Date = DateTime.Today.AddDays(30);
         ActiveSwitch.IsToggled = true;
+        ClearValidationMessages();
         _readGuard.Reset("registro-producto");
+    }
+
+    private void ClearValidationMessages()
+    {
+        SkuErrorLabel.Text = string.Empty;
+        BarcodeErrorLabel.Text = string.Empty;
+        NameErrorLabel.Text = string.Empty;
+        NumericErrorLabel.Text = string.Empty;
+        ExpirationModeErrorLabel.Text = string.Empty;
+        FormErrorLabel.Text = string.Empty;
+    }
+
+    private void ShowValidationError(string message)
+    {
+        if (message.Contains("SKU", StringComparison.OrdinalIgnoreCase))
+        {
+            SkuErrorLabel.Text = message;
+        }
+        else if (message.Contains("código de barras", StringComparison.OrdinalIgnoreCase))
+        {
+            BarcodeErrorLabel.Text = message;
+        }
+        else if (message.Contains("nombre", StringComparison.OrdinalIgnoreCase))
+        {
+            NameErrorLabel.Text = message;
+        }
+        else if (message.Contains("stock", StringComparison.OrdinalIgnoreCase) ||
+                 message.Contains("precio", StringComparison.OrdinalIgnoreCase) ||
+                 message.Contains("inventario", StringComparison.OrdinalIgnoreCase))
+        {
+            NumericErrorLabel.Text = message;
+        }
+        else
+        {
+            FormErrorLabel.Text = message;
+        }
     }
 
     private static decimal ParseDecimal(string? value, string message)
@@ -206,4 +272,7 @@ public partial class NewItemPage : ContentPage
 
         throw new InventoryRuleException(message);
     }
+
+    private static decimal? ParseOptionalDecimal(string? value, string message) =>
+        string.IsNullOrWhiteSpace(value) ? null : ParseDecimal(value, message);
 }

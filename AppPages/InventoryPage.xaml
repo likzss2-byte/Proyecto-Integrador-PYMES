@@ -1,71 +1,36 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<ContentPage 
-			 xmlns:templates="clr-namespace:InventorySystem.VisualElementsTemplates"
-             xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:templates="clr-namespace:InventorySystem.VisualElementsTemplates"
              x:Class="InventorySystem.AppPages.InventoryPage"
-			 Shell.NavBarIsVisible="False">
-
-	<Grid
-		RowDefinitions="Auto,*,Auto,Auto,Auto"
-		>
-		<Grid
-			Grid.Row="0"
-			>
-			<Border
-			BackgroundColor="#75E843"
-			Opacity="1"
-			HorizontalOptions="Fill"
-			Padding="28"
-			>
-			</Border>
-			<Label
-				Margin="16,2,0,0"
-				VerticalOptions="Center"
-				HorizontalOptions="Start"
-				FontAttributes="Bold"
-				FontSize="Large"
-				Text="Inventario"
-				Style="{StaticResource PageTitle}"
-				SemanticProperties.HeadingLevel="Level1"
-			/>
-		</Grid>
-		<CollectionView
-			x:Name="InventoryItems"
-			Grid.Row="1"
-			Margin="20,12"
-			SelectionMode="Single"
-			SelectionChanged="InventoryItems_SelectionChanged">
-			<CollectionView.EmptyView>
-				<Label Text="Aún no hay elementos por mostrar" HorizontalOptions="Center" VerticalOptions="Center" />
-			</CollectionView.EmptyView>
-			<CollectionView.ItemTemplate>
-				<DataTemplate>
-					<Border Margin="0,4" Padding="12" Stroke="{AppThemeBinding Light=#D0D0D0, Dark=#505050}" StrokeShape="RoundRectangle 12">
-						<Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
-							<Label Text="{Binding Name}" FontAttributes="Bold" />
-							<Label Grid.Row="1" Text="{Binding DisplayCode}" FontSize="Small" />
-							<Label Grid.Column="1" Grid.RowSpan="2" Text="{Binding DisplayStock}" VerticalOptions="Center" />
-						</Grid>
-					</Border>
-				</DataTemplate>
-			</CollectionView.ItemTemplate>
-		</CollectionView>
-		<templates:SortButton
-			x:Name="InventorySortButton"
-			SortChanged="InventorySortButton_SortChanged"
-			Grid.Row="2"
-			HorizontalOptions="End"
-			Margin="22,12,22,12"
-			IsVisible="True"/>
-		<templates:SearchBar
-			x:Name="InventorySearch"
-			Grid.Row="3"
-			VerticalOptions="End">
-		</templates:SearchBar>
-		<templates:Dock
-			Grid.Row="4"
-			VerticalOptions="End">
-		</templates:Dock>
-	</Grid>
+             Title="Inventario">
+    <Grid RowDefinitions="Auto,Auto,*,Auto" Padding="28,24,28,0" MaximumWidthRequest="1180" HorizontalOptions="Center">
+        <VerticalStackLayout Spacing="4">
+            <Label Text="Inventario" Style="{StaticResource DesktopPageTitle}" SemanticProperties.HeadingLevel="Level1" />
+            <Label Text="Busca por nombre, marca, SKU o código de barras y abre un producto para consultar lotes e historial." Style="{StaticResource DesktopPageSubtitle}" />
+        </VerticalStackLayout>
+        <Grid Grid.Row="1" ColumnDefinitions="*,Auto" ColumnSpacing="12" Margin="0,14,0,10">
+            <templates:SearchBar x:Name="InventorySearch" />
+            <templates:SortButton x:Name="InventorySortButton" Grid.Column="1" SortChanged="InventorySortButton_SortChanged" />
+        </Grid>
+        <CollectionView x:Name="InventoryItems" Grid.Row="2" SelectionMode="Single" SelectionChanged="InventoryItems_SelectionChanged">
+            <CollectionView.EmptyView>
+                <Label Text="Aún no hay productos por mostrar." HorizontalOptions="Center" VerticalOptions="Center" Style="{StaticResource HelperText}" />
+            </CollectionView.EmptyView>
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <Border Style="{StaticResource Card}" Margin="0,4" Padding="14">
+                        <Grid ColumnDefinitions="2*,*,Auto" RowDefinitions="Auto,Auto">
+                            <Label Text="{Binding Name}" FontAttributes="Bold" FontSize="16" />
+                            <Label Grid.Row="1" Text="{Binding DisplayCode}" Style="{StaticResource HelperText}" />
+                            <Label Grid.Column="1" Text="{Binding Brand}" />
+                            <Label Grid.Row="1" Grid.Column="1" Text="{Binding ExpirationMode}" Style="{StaticResource HelperText}" />
+                            <Label Grid.Column="2" Grid.RowSpan="2" Text="{Binding DisplayStock}" FontAttributes="Bold" VerticalOptions="Center" />
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+        <templates:Dock Grid.Row="3" IsVisible="{OnPlatform WinUI=False, Default=True}" VerticalOptions="End" />
+    </Grid>
 </ContentPage>

@@ -3,29 +3,31 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:templates="clr-namespace:InventorySystem.VisualElementsTemplates"
              x:Class="InventorySystem.AppPages.PurveyorFullPage"
-             Shell.NavBarIsVisible="False">
-    <Grid RowDefinitions="Auto,Auto,*,Auto">
-        <Grid Grid.Row="0">
-            <Border BackgroundColor="#75E843" HorizontalOptions="Fill" Padding="28" />
-            <Label Margin="16,2,0,0" VerticalOptions="Center" FontAttributes="Bold" FontSize="Large" Text="Proveedores" />
-        </Grid>
-        <SearchBar x:Name="SupplierSearch" Grid.Row="1" Margin="20,12" Placeholder="Buscar..." TextChanged="SupplierSearch_TextChanged" />
-        <CollectionView x:Name="SupplierList" Grid.Row="2" Margin="20,0" SelectionMode="Single" SelectionChanged="SupplierList_SelectionChanged">
+             Title="Proveedores">
+    <Grid RowDefinitions="Auto,Auto,*,Auto" Padding="28,24,28,0" MaximumWidthRequest="1080" HorizontalOptions="Center">
+        <VerticalStackLayout Spacing="4">
+            <Label Text="Proveedores" Style="{StaticResource DesktopPageTitle}" />
+            <Label Text="Consulta los datos de contacto y la relación con tus compras." Style="{StaticResource DesktopPageSubtitle}" />
+        </VerticalStackLayout>
+        <SearchBar x:Name="SupplierSearch" Grid.Row="1" Margin="0,14,0,10" Placeholder="Buscar proveedor" TextChanged="SupplierSearch_TextChanged" />
+        <CollectionView x:Name="SupplierList" Grid.Row="2" SelectionMode="Single" SelectionChanged="SupplierList_SelectionChanged">
             <CollectionView.EmptyView>
-                <Label Text="Aún no hay proveedores por mostrar" HorizontalOptions="Center" VerticalOptions="Center" />
+                <Label Text="Aún no hay proveedores por mostrar." HorizontalOptions="Center" VerticalOptions="Center" Style="{StaticResource HelperText}" />
             </CollectionView.EmptyView>
             <CollectionView.ItemTemplate>
                 <DataTemplate>
-                    <Border Margin="0,4" Padding="12" Stroke="{AppThemeBinding Light=#D0D0D0, Dark=#505050}" StrokeShape="RoundRectangle 12">
-                        <VerticalStackLayout>
-                            <Label Text="{Binding CompanyName}" FontAttributes="Bold" />
-                            <Label Text="{Binding ContactName}" FontSize="Small" />
-                            <Label Text="{Binding Phone}" FontSize="Small" />
-                        </VerticalStackLayout>
+                    <Border Style="{StaticResource Card}" Margin="0,4" Padding="14">
+                        <Grid ColumnDefinitions="2*,*,*" RowDefinitions="Auto,Auto">
+                            <Label Text="{Binding CompanyName}" FontAttributes="Bold" FontSize="16" />
+                            <Label Grid.Row="1" Text="{Binding ContactName}" Style="{StaticResource HelperText}" />
+                            <Label Grid.Column="1" Text="{Binding Phone}" />
+                            <Label Grid.Row="1" Grid.Column="1" Text="{Binding Email}" Style="{StaticResource HelperText}" />
+                            <Label Grid.Column="2" Grid.RowSpan="2" Text="{Binding State}" VerticalOptions="Center" HorizontalTextAlignment="End" />
+                        </Grid>
                     </Border>
                 </DataTemplate>
             </CollectionView.ItemTemplate>
         </CollectionView>
-        <templates:Dock Grid.Row="3" VerticalOptions="End" />
+        <templates:Dock Grid.Row="3" IsVisible="{OnPlatform WinUI=False, Default=True}" VerticalOptions="End" />
     </Grid>
 </ContentPage>

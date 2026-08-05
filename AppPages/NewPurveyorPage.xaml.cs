@@ -34,6 +34,7 @@ public partial class NewPurveyorPage : ContentPage
     {
         try
         {
+            SupplierErrorLabel.Text = string.Empty;
             var supplier = await _suppliers.SaveAsync(
                 _businessId,
                 new SupplierInput(
@@ -51,7 +52,7 @@ public partial class NewPurveyorPage : ContentPage
         }
         catch (Exception error)
         {
-            await DisplayAlertAsync("Proveedor", error.Message, "Aceptar");
+            SupplierErrorLabel.Text = error.Message;
         }
     }
 
@@ -66,5 +67,6 @@ public partial class NewPurveyorPage : ContentPage
         AddressEntry.Text = string.Empty;
         NotesEntry.Text = string.Empty;
         ActiveSwitch.IsToggled = true;
+        SupplierErrorLabel.Text = string.Empty;
     }
 }

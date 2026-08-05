@@ -31,8 +31,8 @@ public partial class NewOrderPage : ContentPage
         _businesses = businesses;
         _readGuard = readGuard;
         LineList.ItemsSource = _lines;
-        QuantityEntry.Text = "1";
-        UnitCostEntry.Text = "0";
+        ManufacturingDatePicker.Date = DateTime.Today;
+        ExpirationDatePicker.Date = DateTime.Today.AddDays(30);
     }
 
     protected override async void OnAppearing()
@@ -46,7 +46,7 @@ public partial class NewOrderPage : ContentPage
         }
         catch (Exception error)
         {
-            await DisplayAlertAsync("Entrada", error.Message, "Aceptar");
+            ResultLabel.Text = error.Message;
         }
     }
 
@@ -62,6 +62,7 @@ public partial class NewOrderPage : ContentPage
 
         try
         {
+            ResultLabel.Text = string.Empty;
             var product = await _products.FindByCodeAsync(_businessId, code);
             if (product is null)
             {
@@ -91,10 +92,30 @@ public partial class NewOrderPage : ContentPage
                 throw new InventoryRuleException("El costo unitario no puede ser negativo.");
             }
 
-            _lines.Add(new OperationLineView { Product = product, Quantity = quantity, UnitPrice = cost });
+            if (product.ExpirationMode == ExpirationMode.Tracked && !HasExpirationDateCheck.IsChecked)
+            {
+                throw new InventoryRuleException("La fecha de caducidad es obligatoria para este producto.");
+            }
+
+            _lines.Add(new OperationLineView
+            {
+                Product = product,
+                Quantity = quantity,
+                UnitPrice = cost,
+                LotCode = LotCodeEntry.Text,
+                ManufacturingDate = HasManufacturingDateCheck.IsChecked
+                    ? DateOnly.FromDateTime(ManufacturingDatePicker.Date ?? DateTime.Today)
+                    : null,
+                ExpirationDate = HasExpirationDateCheck.IsChecked
+                    ? DateOnly.FromDateTime(ExpirationDatePicker.Date ?? DateTime.Today)
+                    : null
+            });
             ProductCodeEntry.Text = string.Empty;
-            QuantityEntry.Text = "1";
-            UnitCostEntry.Text = "0";
+            QuantityEntry.Text = string.Empty;
+            UnitCostEntry.Text = string.Empty;
+            LotCodeEntry.Text = string.Empty;
+            HasManufacturingDateCheck.IsChecked = false;
+            HasExpirationDateCheck.IsChecked = false;
             _readGuard.Reset("entrada");
             UpdateTotal();
         }
@@ -117,22 +138,34 @@ public partial class NewOrderPage : ContentPage
     {
         try
         {
+            ConfirmEntryButton.IsEnabled = false;
             var document = await _transactions.CreateEntryAsync(
                 _businessId,
-                _lines.Select(line => new InventoryDocumentLineInput(line.Product.Id, line.Quantity, line.UnitPrice)),
+                _lines.Select(line => new InventoryDocumentLineInput(
+                    line.Product.Id,
+                    line.Quantity,
+                    line.UnitPrice,
+                    line.LotCode,
+                    line.ManufacturingDate,
+                    line.ExpirationDate)),
                 (SupplierPicker.SelectedItem as Supplier)?.Id,
                 NotesEntry.Text);
             document = await _transactions.ConfirmAsync(_businessId, document.Id);
             _lastConfirmedEntryId = document.Id;
+            ResultLabel.Style = (Style)Application.Current!.Resources["InfoText"];
             ResultLabel.Text = $"Entrada {document.Reference} confirmada por {document.Total:C}.";
-            CancelReasonEntry.IsVisible = true;
-            CancelEntryButton.IsVisible = true;
+            CancellationPanel.IsVisible = true;
             _lines.Clear();
             UpdateTotal();
         }
         catch (Exception error)
         {
-            await DisplayAlertAsync("Entrada", error.Message, "Aceptar");
+            ResultLabel.Style = (Style)Application.Current!.Resources["ErrorText"];
+            ResultLabel.Text = error.Message;
+        }
+        finally
+        {
+            ConfirmEntryButton.IsEnabled = true;
         }
     }
 
@@ -149,17 +182,22 @@ public partial class NewOrderPage : ContentPage
                 _businessId,
                 _lastConfirmedEntryId.Value,
                 CancelReasonEntry.Text ?? string.Empty);
-            ResultLabel.Text = $"Entrada {cancelled.Reference} cancelada y stock revertido.";
+            ResultLabel.Text = $"Entrada {cancelled.Reference} cancelada y stock revertido sobre sus lotes originales.";
             _lastConfirmedEntryId = null;
             CancelReasonEntry.Text = string.Empty;
-            CancelReasonEntry.IsVisible = false;
-            CancelEntryButton.IsVisible = false;
+            CancellationPanel.IsVisible = false;
         }
         catch (Exception error)
         {
-            await DisplayAlertAsync("Cancelación", error.Message, "Aceptar");
+            ResultLabel.Text = error.Message;
         }
     }
+
+    private void HasManufacturingDateCheck_Changed(object? sender, CheckedChangedEventArgs e) =>
+        ManufacturingDatePicker.IsVisible = e.Value;
+
+    private void HasExpirationDateCheck_Changed(object? sender, CheckedChangedEventArgs e) =>
+        ExpirationDatePicker.IsVisible = e.Value;
 
     private void UpdateTotal() => TotalLabel.Text = $"Total: {_lines.Sum(line => line.Subtotal):C}";
 

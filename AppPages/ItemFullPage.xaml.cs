@@ -8,6 +8,7 @@ namespace InventorySystem.AppPages;
 public partial class ItemFullPage : ContentPage, IQueryAttributable
 {
     private readonly ProductRepository _products;
+    private readonly SupplierRepository _suppliers;
     private readonly BusinessService _businesses;
     private readonly InventoryAdjustmentService _adjustments;
     private readonly InventoryLotService _lots;
@@ -17,16 +18,20 @@ public partial class ItemFullPage : ContentPage, IQueryAttributable
 
     public ItemFullPage(
         ProductRepository products,
+        SupplierRepository suppliers,
         BusinessService businesses,
         InventoryAdjustmentService adjustments,
         InventoryLotService lots)
     {
         InitializeComponent();
         _products = products;
+        _suppliers = suppliers;
         _businesses = businesses;
         _adjustments = adjustments;
         _lots = lots;
         ExpirationModePicker.SelectedIndex = 0;
+        LotExpirationDate.Date = DateTime.Today.AddDays(30);
+        LotManufacturingDate.Date = DateTime.Today;
     }
 
     public void ApplyQueryAttributes(IDictionary<string, object> query)
@@ -43,11 +48,13 @@ public partial class ItemFullPage : ContentPage, IQueryAttributable
         try
         {
             _businessId = (await _businesses.GetDefaultAsync()).Id;
+            LotSupplierPicker.ItemsSource = (await _suppliers.SearchAsync(_businessId)).ToList();
+            LotSupplierPicker.ItemDisplayBinding = new Binding(nameof(Supplier.CompanyName));
             await RefreshAsync();
         }
         catch (Exception error)
         {
-            await DisplayAlertAsync("Producto", error.Message, "Aceptar");
+            DetailErrorLabel.Text = error.Message;
         }
     }
 
@@ -55,6 +62,7 @@ public partial class ItemFullPage : ContentPage, IQueryAttributable
     {
         try
         {
+            DetailErrorLabel.Text = string.Empty;
             var quantity = ParseDecimal(AdjustmentQuantity.Text, "Captura una cantidad válida.");
             await _adjustments.ApplyAdjustmentAsync(
                 _businessId,
@@ -65,7 +73,7 @@ public partial class ItemFullPage : ContentPage, IQueryAttributable
         }
         catch (Exception error)
         {
-            await DisplayAlertAsync("Ajuste", error.Message, "Aceptar");
+            DetailErrorLabel.Text = error.Message;
         }
     }
 
@@ -73,10 +81,11 @@ public partial class ItemFullPage : ContentPage, IQueryAttributable
     {
         try
         {
+            LotErrorLabel.Text = string.Empty;
             var mode = ExpirationModePicker.SelectedIndex == 1
                 ? ExpirationMode.NotApplicable
                 : ExpirationMode.Tracked;
-            DateOnly? date = mode == ExpirationMode.Tracked
+            DateOnly? expiration = mode == ExpirationMode.Tracked
                 ? DateOnly.FromDateTime(LotExpirationDate.Date ?? DateTime.Today)
                 : null;
             if (string.IsNullOrWhiteSpace(LotQuantityEntry.Text))
@@ -85,34 +94,46 @@ public partial class ItemFullPage : ContentPage, IQueryAttributable
                     _businessId,
                     _productId,
                     mode,
-                    date,
+                    expiration,
                     LotCodeEntry.Text);
             }
             else
             {
                 await _lots.ReceiveAsync(
                     _businessId,
-                    _productId,
-                    ParseDecimal(LotQuantityEntry.Text, "Captura una cantidad válida."),
-                    mode,
-                    date,
-                    LotCodeEntry.Text);
+                    new InventoryLotReceiptInput(
+                        _productId,
+                        ParseDecimal(LotQuantityEntry.Text, "Captura una cantidad válida."),
+                        mode,
+                        expiration,
+                        LotCodeEntry.Text,
+                        (LotSupplierPicker.SelectedItem as Supplier)?.Id,
+                        HasManufacturingDateCheck.IsChecked
+                            ? DateOnly.FromDateTime(LotManufacturingDate.Date ?? DateTime.Today)
+                            : null,
+                        ParseOptionalDecimal(LotUnitCostEntry.Text, "El costo unitario no es válido.")));
             }
 
             LotQuantityEntry.Text = string.Empty;
             LotCodeEntry.Text = string.Empty;
+            LotUnitCostEntry.Text = string.Empty;
+            HasManufacturingDateCheck.IsChecked = false;
             await RefreshAsync();
         }
         catch (Exception error)
         {
-            await DisplayAlertAsync("Caducidad", error.Message, "Aceptar");
+            LotErrorLabel.Text = error.Message;
         }
     }
+
+    private void HasManufacturingDateCheck_Changed(object? sender, CheckedChangedEventArgs e) =>
+        LotManufacturingDate.IsVisible = e.Value;
 
     private async void CreateCount_Clicked(object? sender, EventArgs e)
     {
         try
         {
+            DetailErrorLabel.Text = string.Empty;
             var physical = ParseDecimal(PhysicalStock.Text, "Captura un inventario físico válido.");
             var count = await _adjustments.CreateCountAsync(
                 _businessId,
@@ -125,7 +146,7 @@ public partial class ItemFullPage : ContentPage, IQueryAttributable
         }
         catch (Exception error)
         {
-            await DisplayAlertAsync("Conteo", error.Message, "Aceptar");
+            DetailErrorLabel.Text = error.Message;
         }
     }
 
@@ -155,7 +176,7 @@ public partial class ItemFullPage : ContentPage, IQueryAttributable
         }
         catch (Exception error)
         {
-            await DisplayAlertAsync("Conteo", error.Message, "Aceptar");
+            DetailErrorLabel.Text = error.Message;
         }
     }
 
@@ -178,6 +199,8 @@ public partial class ItemFullPage : ContentPage, IQueryAttributable
             ExpirationMode.NotApplicable => "Caducidad: no aplica",
             _ => "Caducidad: por configurar"
         };
+        ExpirationModePicker.SelectedIndex = product.ExpirationMode == ExpirationMode.NotApplicable ? 1 : 0;
+        LotList.ItemsSource = await _lots.GetLotsAsync(_businessId, _productId);
         MovementList.ItemsSource = await _adjustments.GetMovementsAsync(_businessId, _productId);
     }
 
@@ -191,4 +214,7 @@ public partial class ItemFullPage : ContentPage, IQueryAttributable
 
         throw new InventoryRuleException(message);
     }
+
+    private static decimal? ParseOptionalDecimal(string? value, string message) =>
+        string.IsNullOrWhiteSpace(value) ? null : ParseDecimal(value, message);
 }

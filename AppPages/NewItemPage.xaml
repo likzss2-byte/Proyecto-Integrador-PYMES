@@ -4,35 +4,118 @@
              x:Class="InventorySystem.AppPages.NewItemPage"
              Title="Nuevo producto">
     <ScrollView>
-        <VerticalStackLayout Padding="20" Spacing="8">
-            <Label Text="Registrar producto" FontSize="Large" FontAttributes="Bold" />
-            <Entry x:Name="LookupCode" Placeholder="Código manual o lector USB" Completed="LookupCode_Completed" />
-            <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
-                <Button Text="Buscar código" Clicked="LookupCode_Clicked" />
-                <Button Grid.Column="1" Text="Leer imagen" Clicked="ReadImage_Clicked" />
-            </Grid>
-            <Label x:Name="LookupMessage" FontSize="Small" />
+        <VerticalStackLayout Padding="28,24" Spacing="18" MaximumWidthRequest="980" HorizontalOptions="Center">
+            <VerticalStackLayout Spacing="4">
+                <Label Text="Registrar producto" Style="{StaticResource DesktopPageTitle}" />
+                <Label Text="Los campos marcados con * son obligatorios. SKU y código de barras se administran por separado." Style="{StaticResource DesktopPageSubtitle}" />
+            </VerticalStackLayout>
 
-            <Entry x:Name="SkuEntry" Placeholder="SKU interno *" />
-            <Entry x:Name="BarcodeEntry" Placeholder="Código de barras (opcional)" />
-            <Entry x:Name="NameEntry" Placeholder="Nombre *" />
-            <Entry x:Name="BrandEntry" Placeholder="Marca" />
-            <Editor x:Name="DescriptionEntry" Placeholder="Descripción" AutoSize="TextChanges" />
-            <Picker x:Name="UnitPicker" Title="Unidad de medida">
-                <Picker.Items>
-                    <x:String>Unidad</x:String>
-                    <x:String>Kilogramo</x:String>
-                    <x:String>Litro</x:String>
-                </Picker.Items>
-            </Picker>
-            <Entry x:Name="InitialStockEntry" Placeholder="Inventario inicial" Keyboard="Numeric" />
-            <Entry x:Name="MinimumStockEntry" Placeholder="Stock mínimo" Keyboard="Numeric" />
-            <Entry x:Name="SalePriceEntry" Placeholder="Precio de venta" Keyboard="Numeric" />
-            <HorizontalStackLayout Spacing="8">
-                <Label Text="Activo" VerticalOptions="Center" />
-                <Switch x:Name="ActiveSwitch" IsToggled="True" />
-            </HorizontalStackLayout>
-            <Button Text="Guardar producto" BackgroundColor="#75E843" Clicked="SaveProduct_Clicked" />
+            <Border Style="{StaticResource Card}">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Consulta por código" Style="{StaticResource SectionTitle}" />
+                    <Label Text="Código manual o lector USB" Style="{StaticResource FieldLabel}" />
+                    <Entry x:Name="LookupCode" Style="{StaticResource FormEntry}" Completed="LookupCode_Completed" />
+                    <HorizontalStackLayout Spacing="10">
+                        <Button Text="Buscar código" Style="{StaticResource PrimaryButton}" Clicked="LookupCode_Clicked" />
+                        <Button Text="Leer desde imagen" Style="{StaticResource SecondaryButton}" Clicked="ReadImage_Clicked" />
+                    </HorizontalStackLayout>
+                    <Label x:Name="LookupMessage" Style="{StaticResource InfoText}" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Border Style="{StaticResource Card}">
+                <VerticalStackLayout Spacing="14">
+                    <Label Text="Datos del producto" Style="{StaticResource SectionTitle}" />
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="18" RowDefinitions="Auto,Auto">
+                        <VerticalStackLayout Spacing="4">
+                            <Label Text="SKU interno *" Style="{StaticResource FieldLabel}" />
+                            <Entry x:Name="SkuEntry" Style="{StaticResource FormEntry}" />
+                            <Label x:Name="SkuErrorLabel" Style="{StaticResource ErrorText}" />
+                        </VerticalStackLayout>
+                        <VerticalStackLayout Grid.Column="1" Spacing="4">
+                            <Label Text="Código de barras — Opcional" Style="{StaticResource FieldLabel}" />
+                            <Entry x:Name="BarcodeEntry" Style="{StaticResource FormEntry}" />
+                            <Label x:Name="BarcodeErrorLabel" Style="{StaticResource ErrorText}" />
+                        </VerticalStackLayout>
+                        <VerticalStackLayout Grid.Row="1" Margin="0,12,0,0" Spacing="4">
+                            <Label Text="Nombre *" Style="{StaticResource FieldLabel}" />
+                            <Entry x:Name="NameEntry" Style="{StaticResource FormEntry}" />
+                            <Label x:Name="NameErrorLabel" Style="{StaticResource ErrorText}" />
+                        </VerticalStackLayout>
+                        <VerticalStackLayout Grid.Row="1" Grid.Column="1" Margin="0,12,0,0" Spacing="4">
+                            <Label Text="Marca — Opcional" Style="{StaticResource FieldLabel}" />
+                            <Entry x:Name="BrandEntry" Style="{StaticResource FormEntry}" />
+                        </VerticalStackLayout>
+                    </Grid>
+
+                    <Label Text="Descripción — Opcional" Style="{StaticResource FieldLabel}" />
+                    <Editor x:Name="DescriptionEntry" Style="{StaticResource FormEditor}" AutoSize="TextChanges" />
+
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="18">
+                        <VerticalStackLayout Spacing="4">
+                            <Label Text="Unidad de medida *" Style="{StaticResource FieldLabel}" />
+                            <Picker x:Name="UnitPicker" Style="{StaticResource FormPicker}">
+                                <Picker.Items>
+                                    <x:String>Unidad</x:String>
+                                    <x:String>Kilogramo</x:String>
+                                    <x:String>Litro</x:String>
+                                </Picker.Items>
+                            </Picker>
+                        </VerticalStackLayout>
+                        <VerticalStackLayout Grid.Column="1" Spacing="4">
+                            <Label Text="¿Controla caducidad? *" Style="{StaticResource FieldLabel}" />
+                            <Picker x:Name="ExpirationModePicker" Style="{StaticResource FormPicker}" SelectedIndexChanged="ExpirationModePicker_Changed">
+                                <Picker.Items>
+                                    <x:String>Selecciona una opción</x:String>
+                                    <x:String>Sí, por lote</x:String>
+                                    <x:String>No perecedero</x:String>
+                                </Picker.Items>
+                            </Picker>
+                            <Label x:Name="ExpirationModeErrorLabel" Style="{StaticResource ErrorText}" />
+                        </VerticalStackLayout>
+                    </Grid>
+
+                    <Grid ColumnDefinitions="*,*,*" ColumnSpacing="18">
+                        <VerticalStackLayout Spacing="4">
+                            <Label Text="Inventario inicial" Style="{StaticResource FieldLabel}" />
+                            <Entry x:Name="InitialStockEntry" Style="{StaticResource FormEntry}" Keyboard="Numeric" />
+                        </VerticalStackLayout>
+                        <VerticalStackLayout Grid.Column="1" Spacing="4">
+                            <Label Text="Stock mínimo" Style="{StaticResource FieldLabel}" />
+                            <Entry x:Name="MinimumStockEntry" Style="{StaticResource FormEntry}" Keyboard="Numeric" />
+                        </VerticalStackLayout>
+                        <VerticalStackLayout Grid.Column="2" Spacing="4">
+                            <Label Text="Precio de venta" Style="{StaticResource FieldLabel}" />
+                            <Entry x:Name="SalePriceEntry" Style="{StaticResource FormEntry}" Keyboard="Numeric" />
+                        </VerticalStackLayout>
+                    </Grid>
+                    <Label x:Name="NumericErrorLabel" Style="{StaticResource ErrorText}" />
+
+                    <Border x:Name="ExpirationDetailsPanel" Style="{StaticResource AlertCard}" IsVisible="False">
+                        <VerticalStackLayout Spacing="10">
+                            <Label Text="Lote del inventario inicial" Style="{StaticResource SectionTitle}" />
+                            <Label Text="Si el inventario inicial es mayor que cero, la caducidad es obligatoria." Style="{StaticResource HelperText}" />
+                            <Grid ColumnDefinitions="*,*" ColumnSpacing="18">
+                                <VerticalStackLayout Spacing="4">
+                                    <Label Text="Código de lote — Opcional" Style="{StaticResource FieldLabel}" />
+                                    <Entry x:Name="InitialLotCodeEntry" Style="{StaticResource FormEntry}" />
+                                </VerticalStackLayout>
+                                <VerticalStackLayout Grid.Column="1" Spacing="4">
+                                    <Label Text="Fecha de caducidad *" Style="{StaticResource FieldLabel}" />
+                                    <DatePicker x:Name="InitialExpirationDatePicker" Style="{StaticResource FormDatePicker}" />
+                                </VerticalStackLayout>
+                            </Grid>
+                        </VerticalStackLayout>
+                    </Border>
+
+                    <HorizontalStackLayout Spacing="8">
+                        <Switch x:Name="ActiveSwitch" IsToggled="True" />
+                        <Label Text="Producto activo" VerticalOptions="Center" Style="{StaticResource FieldLabel}" />
+                    </HorizontalStackLayout>
+                    <Label x:Name="FormErrorLabel" Style="{StaticResource ErrorText}" />
+                    <Button x:Name="SaveProductButton" Text="Guardar producto" Style="{StaticResource PrimaryButton}" HorizontalOptions="Start" Clicked="SaveProduct_Clicked" />
+                </VerticalStackLayout>
+            </Border>
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>

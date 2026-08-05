@@ -446,4 +446,106 @@
 		<Setter Property="FontAttributes" Value="Bold" />
 	</Style>
 
+    <Style x:Key="DesktopPageTitle" TargetType="Label">
+        <Setter Property="FontSize" Value="30" />
+        <Setter Property="FontAttributes" Value="Bold" />
+        <Setter Property="TextColor" Value="{AppThemeBinding Light=#17211B, Dark=#F4F7F5}" />
+    </Style>
+
+    <Style x:Key="DesktopPageSubtitle" TargetType="Label">
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="TextColor" Value="{AppThemeBinding Light=#5E6B63, Dark=#B9C4BD}" />
+    </Style>
+
+    <Style x:Key="SectionTitle" TargetType="Label">
+        <Setter Property="FontSize" Value="18" />
+        <Setter Property="FontAttributes" Value="Bold" />
+        <Setter Property="TextColor" Value="{AppThemeBinding Light=#17211B, Dark=#F4F7F5}" />
+        <Setter Property="Margin" Value="0,2,0,4" />
+    </Style>
+
+    <Style x:Key="FieldLabel" TargetType="Label">
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="FontAttributes" Value="Bold" />
+        <Setter Property="TextColor" Value="{AppThemeBinding Light=#35423A, Dark=#D9E2DC}" />
+        <Setter Property="Margin" Value="0,0,0,2" />
+    </Style>
+
+    <Style x:Key="HelperText" TargetType="Label">
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="TextColor" Value="{AppThemeBinding Light=#66736B, Dark=#AAB6AE}" />
+    </Style>
+
+    <Style x:Key="ErrorText" TargetType="Label">
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="TextColor" Value="#B42318" />
+    </Style>
+
+    <Style x:Key="InfoText" TargetType="Label">
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="TextColor" Value="{AppThemeBinding Light=#28633A, Dark=#8EE0A4}" />
+    </Style>
+
+    <Style x:Key="FormEntry" TargetType="Entry">
+        <Setter Property="BackgroundColor" Value="{AppThemeBinding Light=#F4F7F5, Dark=#26312B}" />
+        <Setter Property="HeightRequest" Value="44" />
+        <Setter Property="Margin" Value="0" />
+        <Setter Property="ClearButtonVisibility" Value="WhileEditing" />
+    </Style>
+
+    <Style x:Key="FormPicker" TargetType="Picker">
+        <Setter Property="BackgroundColor" Value="{AppThemeBinding Light=#F4F7F5, Dark=#26312B}" />
+        <Setter Property="HeightRequest" Value="44" />
+    </Style>
+
+    <Style x:Key="FormDatePicker" TargetType="DatePicker">
+        <Setter Property="BackgroundColor" Value="{AppThemeBinding Light=#F4F7F5, Dark=#26312B}" />
+        <Setter Property="HeightRequest" Value="44" />
+    </Style>
+
+    <Style x:Key="FormEditor" TargetType="Editor">
+        <Setter Property="BackgroundColor" Value="{AppThemeBinding Light=#F4F7F5, Dark=#26312B}" />
+        <Setter Property="MinimumHeightRequest" Value="88" />
+    </Style>
+
+    <Style x:Key="PrimaryButton" TargetType="Button">
+        <Setter Property="BackgroundColor" Value="#24963E" />
+        <Setter Property="TextColor" Value="White" />
+        <Setter Property="FontAttributes" Value="Bold" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="Padding" Value="18,11" />
+    </Style>
+
+    <Style x:Key="SecondaryButton" TargetType="Button">
+        <Setter Property="BackgroundColor" Value="{AppThemeBinding Light=#E7EEE9, Dark=#34443A}" />
+        <Setter Property="TextColor" Value="{AppThemeBinding Light=#203429, Dark=#F4F7F5}" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="Padding" Value="18,11" />
+    </Style>
+
+    <Style x:Key="DangerButton" TargetType="Button">
+        <Setter Property="BackgroundColor" Value="#B42318" />
+        <Setter Property="TextColor" Value="White" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="Padding" Value="18,11" />
+    </Style>
+
+    <Style x:Key="Card" TargetType="Border">
+        <Setter Property="BackgroundColor" Value="{AppThemeBinding Light=White, Dark=#202B25}" />
+        <Setter Property="Stroke" Value="{AppThemeBinding Light=#DDE5E0, Dark=#3B4A41}" />
+        <Setter Property="StrokeThickness" Value="1" />
+        <Setter Property="StrokeShape" Value="RoundRectangle 12" />
+        <Setter Property="Padding" Value="18" />
+    </Style>
+
+    <Style x:Key="AlertCard" TargetType="Border" BasedOn="{StaticResource Card}">
+        <Setter Property="BackgroundColor" Value="{AppThemeBinding Light=#FFF8E7, Dark=#3B3321}" />
+        <Setter Property="Stroke" Value="{AppThemeBinding Light=#E8CA78, Dark=#756027}" />
+    </Style>
+
+    <Style x:Key="ExpiredCard" TargetType="Border" BasedOn="{StaticResource Card}">
+        <Setter Property="BackgroundColor" Value="{AppThemeBinding Light=#FFF1F0, Dark=#432724}" />
+        <Setter Property="Stroke" Value="{AppThemeBinding Light=#E6A19A, Dark=#82453F}" />
+    </Style>
+
 </ResourceDictionary>

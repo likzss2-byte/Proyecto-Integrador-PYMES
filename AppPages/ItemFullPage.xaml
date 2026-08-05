@@ -4,48 +4,126 @@
              x:Class="InventorySystem.AppPages.ItemFullPage"
              Title="Producto">
     <ScrollView>
-        <VerticalStackLayout Padding="20" Spacing="10">
-            <Label x:Name="ProductNameLabel" FontSize="Large" FontAttributes="Bold" />
-            <Label x:Name="ProductCodeLabel" />
-            <Label x:Name="ProductStockLabel" FontAttributes="Bold" />
-            <Label x:Name="ExpirationStatusLabel" />
+        <VerticalStackLayout Padding="28,24" Spacing="18" MaximumWidthRequest="1080" HorizontalOptions="Center">
+            <VerticalStackLayout Spacing="4">
+                <Label x:Name="ProductNameLabel" Style="{StaticResource DesktopPageTitle}" />
+                <Label x:Name="ProductCodeLabel" Style="{StaticResource DesktopPageSubtitle}" />
+                <HorizontalStackLayout Spacing="18">
+                    <Label x:Name="ProductStockLabel" FontAttributes="Bold" />
+                    <Label x:Name="ExpirationStatusLabel" />
+                </HorizontalStackLayout>
+            </VerticalStackLayout>
 
-            <Label Text="Entrada por lote / caducidad" FontAttributes="Bold" Margin="0,12,0,0" />
-            <Picker x:Name="ExpirationModePicker" Title="Manejo de caducidad">
-                <Picker.Items>
-                    <x:String>Con fecha de caducidad</x:String>
-                    <x:String>No perecedero</x:String>
-                </Picker.Items>
-            </Picker>
-            <DatePicker x:Name="LotExpirationDate" />
-            <Entry x:Name="LotCodeEntry" Placeholder="Código de lote (opcional)" />
-            <Entry x:Name="LotQuantityEntry" Placeholder="Cantidad recibida; vacío para clasificar stock actual" Keyboard="Numeric" />
-            <Button Text="Guardar lote o clasificación" Clicked="SaveLot_Clicked" />
+            <Border Style="{StaticResource Card}">
+                <VerticalStackLayout Spacing="14">
+                    <Label Text="Lotes y caducidad" Style="{StaticResource SectionTitle}" />
+                    <Label Text="Una cantidad vacía clasifica el stock actual sin aumentarlo; una cantidad capturada registra una nueva llegada." Style="{StaticResource HelperText}" />
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="18">
+                        <VerticalStackLayout Spacing="4">
+                            <Label Text="Manejo de caducidad *" Style="{StaticResource FieldLabel}" />
+                            <Picker x:Name="ExpirationModePicker" Style="{StaticResource FormPicker}">
+                                <Picker.Items>
+                                    <x:String>Con fecha de caducidad</x:String>
+                                    <x:String>No perecedero</x:String>
+                                </Picker.Items>
+                            </Picker>
+                        </VerticalStackLayout>
+                        <VerticalStackLayout Grid.Column="1" Spacing="4">
+                            <Label Text="Proveedor — Opcional" Style="{StaticResource FieldLabel}" />
+                            <Picker x:Name="LotSupplierPicker" Style="{StaticResource FormPicker}" Title="Selecciona un proveedor" />
+                        </VerticalStackLayout>
+                    </Grid>
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="18">
+                        <VerticalStackLayout Spacing="4">
+                            <Label Text="Código de lote — Opcional" Style="{StaticResource FieldLabel}" />
+                            <Entry x:Name="LotCodeEntry" Style="{StaticResource FormEntry}" />
+                        </VerticalStackLayout>
+                        <VerticalStackLayout Grid.Column="1" Spacing="4">
+                            <Label Text="Cantidad recibida — Opcional" Style="{StaticResource FieldLabel}" />
+                            <Entry x:Name="LotQuantityEntry" Style="{StaticResource FormEntry}" Keyboard="Numeric" />
+                        </VerticalStackLayout>
+                    </Grid>
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="18">
+                        <VerticalStackLayout Spacing="4">
+                            <Label Text="Fecha de caducidad" Style="{StaticResource FieldLabel}" />
+                            <DatePicker x:Name="LotExpirationDate" Style="{StaticResource FormDatePicker}" />
+                        </VerticalStackLayout>
+                        <VerticalStackLayout Grid.Column="1" Spacing="4">
+                            <Label Text="Costo unitario — Opcional" Style="{StaticResource FieldLabel}" />
+                            <Entry x:Name="LotUnitCostEntry" Style="{StaticResource FormEntry}" Keyboard="Numeric" />
+                        </VerticalStackLayout>
+                    </Grid>
+                    <HorizontalStackLayout Spacing="8">
+                        <CheckBox x:Name="HasManufacturingDateCheck" CheckedChanged="HasManufacturingDateCheck_Changed" />
+                        <Label Text="Registrar fecha de fabricación" VerticalOptions="Center" Style="{StaticResource FieldLabel}" />
+                    </HorizontalStackLayout>
+                    <DatePicker x:Name="LotManufacturingDate" IsVisible="False" Style="{StaticResource FormDatePicker}" />
+                    <Button Text="Guardar lote o clasificación" Style="{StaticResource PrimaryButton}" HorizontalOptions="Start" Clicked="SaveLot_Clicked" />
+                    <Label x:Name="LotErrorLabel" Style="{StaticResource ErrorText}" />
+                    <CollectionView x:Name="LotList" HeightRequest="220">
+                        <CollectionView.EmptyView>
+                            <Label Text="No hay lotes registrados." Style="{StaticResource HelperText}" />
+                        </CollectionView.EmptyView>
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate>
+                                <Border Style="{StaticResource Card}" Margin="0,3" Padding="11">
+                                    <Grid ColumnDefinitions="2*,*,*,*">
+                                        <Label Text="{Binding LotCode, StringFormat='Lote {0}'}" FontAttributes="Bold" />
+                                        <Label Grid.Column="1" Text="{Binding Quantity, StringFormat='Disponible {0:0.###}'}" />
+                                        <Label Grid.Column="2" Text="{Binding ExpirationDate, StringFormat='{0:dd/MM/yyyy}'}" />
+                                        <Label Grid.Column="3" Text="{Binding EffectiveStatus}" HorizontalTextAlignment="End" />
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </VerticalStackLayout>
+            </Border>
 
-            <Label Text="Ajuste manual" FontAttributes="Bold" Margin="0,12,0,0" />
-            <Entry x:Name="AdjustmentQuantity" Placeholder="Cantidad positiva o negativa" Keyboard="Numeric" />
-            <Entry x:Name="AdjustmentReason" Placeholder="Motivo obligatorio" />
-            <Button Text="Aplicar ajuste" BackgroundColor="#75E843" Clicked="ApplyAdjustment_Clicked" />
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="18">
+                <Border Style="{StaticResource Card}">
+                    <VerticalStackLayout Spacing="10">
+                        <Label Text="Ajuste manual" Style="{StaticResource SectionTitle}" />
+                        <Label Text="Cantidad positiva o negativa *" Style="{StaticResource FieldLabel}" />
+                        <Entry x:Name="AdjustmentQuantity" Style="{StaticResource FormEntry}" Keyboard="Numeric" />
+                        <Label Text="Motivo *" Style="{StaticResource FieldLabel}" />
+                        <Entry x:Name="AdjustmentReason" Style="{StaticResource FormEntry}" />
+                        <Button Text="Aplicar ajuste" Style="{StaticResource PrimaryButton}" HorizontalOptions="Start" Clicked="ApplyAdjustment_Clicked" />
+                    </VerticalStackLayout>
+                </Border>
+                <Border Grid.Column="1" Style="{StaticResource Card}">
+                    <VerticalStackLayout Spacing="10">
+                        <Label Text="Conteo físico" Style="{StaticResource SectionTitle}" />
+                        <Label Text="Inventario físico *" Style="{StaticResource FieldLabel}" />
+                        <Entry x:Name="PhysicalStock" Style="{StaticResource FormEntry}" Keyboard="Numeric" />
+                        <Label Text="Notas — Opcional" Style="{StaticResource FieldLabel}" />
+                        <Entry x:Name="CountNotes" Style="{StaticResource FormEntry}" />
+                        <HorizontalStackLayout Spacing="10">
+                            <Button Text="Guardar conteo" Style="{StaticResource SecondaryButton}" Clicked="CreateCount_Clicked" />
+                            <Button x:Name="ConfirmCountButton" Text="Confirmar ajuste" IsVisible="False" Style="{StaticResource PrimaryButton}" Clicked="ConfirmCount_Clicked" />
+                        </HorizontalStackLayout>
+                        <Label x:Name="CountDifferenceLabel" Style="{StaticResource InfoText}" />
+                    </VerticalStackLayout>
+                </Border>
+            </Grid>
 
-            <Label Text="Conteo físico" FontAttributes="Bold" Margin="0,12,0,0" />
-            <Entry x:Name="PhysicalStock" Placeholder="Inventario físico" Keyboard="Numeric" />
-            <Entry x:Name="CountNotes" Placeholder="Notas del conteo" />
-            <Button Text="Guardar conteo" Clicked="CreateCount_Clicked" />
-            <Button x:Name="ConfirmCountButton" Text="Confirmar ajuste del conteo" IsVisible="False" BackgroundColor="#75E843" Clicked="ConfirmCount_Clicked" />
-            <Label x:Name="CountDifferenceLabel" />
-
-            <Label Text="Historial" FontAttributes="Bold" Margin="0,12,0,0" />
-            <CollectionView x:Name="MovementList" HeightRequest="240">
-                <CollectionView.ItemTemplate>
-                    <DataTemplate>
-                        <Grid Padding="4" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
-                            <Label Text="{Binding Type}" />
-                            <Label Grid.Column="1" Text="{Binding Quantity}" />
-                            <Label Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding Reason}" FontSize="Small" />
-                        </Grid>
-                    </DataTemplate>
-                </CollectionView.ItemTemplate>
-            </CollectionView>
+            <Border Style="{StaticResource Card}">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Historial inmutable" Style="{StaticResource SectionTitle}" />
+                    <CollectionView x:Name="MovementList" HeightRequest="300">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Padding="8" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
+                                    <Label Text="{Binding Type}" FontAttributes="Bold" />
+                                    <Label Grid.Column="1" Text="{Binding Quantity}" />
+                                    <Label Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding Reason}" Style="{StaticResource HelperText}" />
+                                </Grid>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </VerticalStackLayout>
+            </Border>
+            <Label x:Name="DetailErrorLabel" Style="{StaticResource ErrorText}" />
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>

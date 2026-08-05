@@ -31,6 +31,8 @@ public static class MauiProgram
         builder.Services.AddSingleton<InventoryTransactionService>();
         builder.Services.AddSingleton<InventoryAdjustmentService>();
         builder.Services.AddSingleton<InventoryLotService>();
+        builder.Services.AddSingleton<PurchaseOrderService>();
+        builder.Services.AddSingleton<DashboardService>();
         builder.Services.AddSingleton<BarcodeReadGuard>();
         builder.Services.AddSingleton<BarcodeScannerService>();
         builder.Services.AddSingleton(new HttpClient { Timeout = Timeout.InfiniteTimeSpan });
@@ -44,6 +46,7 @@ public static class MauiProgram
         builder.Services.AddTransient<NewItemPage>();
         builder.Services.AddTransient<NewPurveyorPage>();
         builder.Services.AddTransient<NewOrderPage>();
+        builder.Services.AddTransient<PurchaseOrdersPage>();
         builder.Services.AddTransient<NewSalePage>();
         builder.Services.AddTransient<ItemFullPage>();
         builder.Services.AddTransient<PurveyorFullPage>();

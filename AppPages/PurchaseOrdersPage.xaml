@@ -1,0 +1,228 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="InventorySystem.AppPages.PurchaseOrdersPage"
+             Title="Pedidos y recepciones">
+    <ScrollView>
+        <VerticalStackLayout Padding="28,24" Spacing="18" MaximumWidthRequest="1120" HorizontalOptions="Center">
+            <VerticalStackLayout Spacing="4">
+                <Label Text="Pedidos y recepciones" Style="{StaticResource DesktopPageTitle}" />
+                <Label Text="Solicita mercancía sin alterar el inventario y registra existencias únicamente cuando llegue." Style="{StaticResource DesktopPageSubtitle}" />
+            </VerticalStackLayout>
+
+            <Border Style="{StaticResource Card}">
+                <VerticalStackLayout Spacing="14">
+                    <Label Text="Nuevo pedido" Style="{StaticResource SectionTitle}" />
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="18" RowDefinitions="Auto,Auto">
+                        <VerticalStackLayout Spacing="4">
+                            <Label Text="Proveedor registrado — Opcional" Style="{StaticResource FieldLabel}" />
+                            <Picker x:Name="SupplierPicker" Style="{StaticResource FormPicker}" Title="Selecciona un proveedor" />
+                        </VerticalStackLayout>
+                        <VerticalStackLayout Grid.Column="1" Spacing="4">
+                            <Label Text="Referencia manual del proveedor *" Style="{StaticResource FieldLabel}" />
+                            <Entry x:Name="ManualSupplierEntry" Style="{StaticResource FormEntry}" />
+                            <Label Text="Úsala cuando el proveedor no esté registrado; si seleccionaste uno, puede quedar vacía." Style="{StaticResource HelperText}" />
+                        </VerticalStackLayout>
+                        <VerticalStackLayout Grid.Row="1" Margin="0,12,0,0" Spacing="4">
+                            <Label Text="Fecha del pedido *" Style="{StaticResource FieldLabel}" />
+                            <DatePicker x:Name="OrderDatePicker" Style="{StaticResource FormDatePicker}" />
+                        </VerticalStackLayout>
+                        <VerticalStackLayout Grid.Row="1" Grid.Column="1" Margin="0,12,0,0" Spacing="4">
+                            <HorizontalStackLayout Spacing="8">
+                                <CheckBox x:Name="HasEstimatedDateCheck" CheckedChanged="HasEstimatedDateCheck_Changed" />
+                                <Label Text="Con fecha estimada de llegada" VerticalOptions="Center" Style="{StaticResource FieldLabel}" />
+                            </HorizontalStackLayout>
+                            <DatePicker x:Name="EstimatedDatePicker" IsVisible="False" Style="{StaticResource FormDatePicker}" />
+                        </VerticalStackLayout>
+                    </Grid>
+
+                    <Border Style="{StaticResource Card}" BackgroundColor="{AppThemeBinding Light=#F8FAF9, Dark=#26312B}">
+                        <VerticalStackLayout Spacing="12">
+                            <Label Text="Agregar concepto" Style="{StaticResource SectionTitle}" />
+                            <Label Text="Código de barras o SKU — Opcional" Style="{StaticResource FieldLabel}" />
+                            <Entry x:Name="ProductCodeEntry" Style="{StaticResource FormEntry}" Completed="AddOrderLine_Clicked" />
+                            <Grid ColumnDefinitions="2*,*" ColumnSpacing="18">
+                                <VerticalStackLayout Spacing="4">
+                                    <Label Text="Descripción *" Style="{StaticResource FieldLabel}" />
+                                    <Entry x:Name="DescriptionEntry" Style="{StaticResource FormEntry}" />
+                                </VerticalStackLayout>
+                                <VerticalStackLayout Grid.Column="1" Spacing="4">
+                                    <Label Text="Unidad de medida *" Style="{StaticResource FieldLabel}" />
+                                    <Picker x:Name="UnitPicker" Style="{StaticResource FormPicker}">
+                                        <Picker.Items>
+                                            <x:String>Unidad</x:String>
+                                            <x:String>Kilogramo</x:String>
+                                            <x:String>Litro</x:String>
+                                        </Picker.Items>
+                                    </Picker>
+                                </VerticalStackLayout>
+                            </Grid>
+                            <Grid ColumnDefinitions="*,*" ColumnSpacing="18">
+                                <VerticalStackLayout Spacing="4">
+                                    <Label Text="Cantidad solicitada *" Style="{StaticResource FieldLabel}" />
+                                    <Entry x:Name="RequestedQuantityEntry" Style="{StaticResource FormEntry}" Keyboard="Numeric" />
+                                </VerticalStackLayout>
+                                <VerticalStackLayout Grid.Column="1" Spacing="4">
+                                    <Label Text="Costo estimado unitario — Opcional" Style="{StaticResource FieldLabel}" />
+                                    <Entry x:Name="EstimatedCostEntry" Style="{StaticResource FormEntry}" Keyboard="Numeric" />
+                                </VerticalStackLayout>
+                            </Grid>
+                            <Label Text="Notas del concepto — Opcional" Style="{StaticResource FieldLabel}" />
+                            <Entry x:Name="LineNotesEntry" Style="{StaticResource FormEntry}" />
+                            <Button Text="Agregar concepto al pedido" Style="{StaticResource SecondaryButton}" HorizontalOptions="Start" Clicked="AddOrderLine_Clicked" />
+                            <Label x:Name="LineErrorLabel" Style="{StaticResource ErrorText}" />
+                        </VerticalStackLayout>
+                    </Border>
+
+                    <CollectionView x:Name="DraftLinesList" HeightRequest="190">
+                        <CollectionView.EmptyView>
+                            <Label Text="Todavía no has agregado conceptos." Style="{StaticResource HelperText}" />
+                        </CollectionView.EmptyView>
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate>
+                                <Border Style="{StaticResource Card}" Margin="0,4" Padding="12">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <VerticalStackLayout Spacing="2">
+                                            <Label Text="{Binding Description}" FontAttributes="Bold" />
+                                            <Label Text="{Binding DisplayDetail}" Style="{StaticResource HelperText}" />
+                                        </VerticalStackLayout>
+                                        <Button Grid.Column="1" Text="Quitar" Style="{StaticResource SecondaryButton}" Clicked="RemoveOrderLine_Clicked" CommandParameter="{Binding .}" />
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+
+                    <Grid ColumnDefinitions="2*,*" ColumnSpacing="18">
+                        <VerticalStackLayout Spacing="4">
+                            <Label Text="Notas del pedido — Opcional" Style="{StaticResource FieldLabel}" />
+                            <Editor x:Name="OrderNotesEntry" Style="{StaticResource FormEditor}" AutoSize="TextChanges" />
+                        </VerticalStackLayout>
+                        <VerticalStackLayout Grid.Column="1" Spacing="4">
+                            <Label Text="Estado inicial *" Style="{StaticResource FieldLabel}" />
+                            <Picker x:Name="InitialStatusPicker" Style="{StaticResource FormPicker}">
+                                <Picker.Items>
+                                    <x:String>Pendiente</x:String>
+                                    <x:String>Borrador</x:String>
+                                </Picker.Items>
+                            </Picker>
+                            <Label x:Name="DraftTotalLabel" Text="Total estimado: $0.00" FontAttributes="Bold" />
+                        </VerticalStackLayout>
+                    </Grid>
+                    <Button x:Name="SaveOrderButton" Text="Guardar pedido" Style="{StaticResource PrimaryButton}" HorizontalOptions="Start" Clicked="SaveOrder_Clicked" />
+                    <Label x:Name="OrderResultLabel" Style="{StaticResource InfoText}" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Border Style="{StaticResource Card}">
+                <VerticalStackLayout Spacing="14">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <VerticalStackLayout Spacing="2">
+                            <Label Text="Pedidos registrados" Style="{StaticResource SectionTitle}" />
+                            <Label Text="Selecciona un pedido para confirmarlo, cancelarlo o registrar una llegada." Style="{StaticResource HelperText}" />
+                        </VerticalStackLayout>
+                        <Button Grid.Column="1" Text="Actualizar" Style="{StaticResource SecondaryButton}" Clicked="RefreshOrders_Clicked" />
+                    </Grid>
+                    <CollectionView x:Name="OrdersList" HeightRequest="260" SelectionMode="Single" SelectionChanged="OrdersList_SelectionChanged">
+                        <CollectionView.EmptyView>
+                            <Label Text="No hay pedidos registrados." Style="{StaticResource HelperText}" />
+                        </CollectionView.EmptyView>
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate>
+                                <Border Style="{StaticResource Card}" Padding="12" Margin="0,4">
+                                    <Grid ColumnDefinitions="2*,*,Auto" RowDefinitions="Auto,Auto">
+                                        <Label Text="{Binding Folio}" FontAttributes="Bold" />
+                                        <Label Grid.Row="1" Text="{Binding DisplaySupplier}" Style="{StaticResource HelperText}" />
+                                        <Label Grid.Column="1" Text="{Binding DisplayStatus}" FontAttributes="Bold" />
+                                        <Label Grid.Row="1" Grid.Column="1" Text="{Binding DisplayDate}" Style="{StaticResource HelperText}" />
+                                        <Label Grid.Column="2" Grid.RowSpan="2" Text="{Binding DisplayTotal}" VerticalOptions="Center" />
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </VerticalStackLayout>
+            </Border>
+
+            <Border x:Name="SelectedOrderPanel" Style="{StaticResource Card}" IsVisible="False">
+                <VerticalStackLayout Spacing="14">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <VerticalStackLayout>
+                            <Label x:Name="SelectedOrderTitle" Style="{StaticResource SectionTitle}" />
+                            <Label x:Name="SelectedOrderSubtitle" Style="{StaticResource DesktopPageSubtitle}" />
+                        </VerticalStackLayout>
+                        <Button x:Name="ConfirmOrderButton" Grid.Column="1" Text="Confirmar pedido" Style="{StaticResource PrimaryButton}" Clicked="ConfirmOrder_Clicked" />
+                    </Grid>
+                    <CollectionView x:Name="OrderLinesList" HeightRequest="220" SelectionMode="Single" SelectionChanged="OrderLinesList_SelectionChanged">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate>
+                                <Border Style="{StaticResource Card}" Padding="12" Margin="0,4">
+                                    <VerticalStackLayout Spacing="2">
+                                        <Label Text="{Binding Description}" FontAttributes="Bold" />
+                                        <Label Text="{Binding DisplayQuantity}" Style="{StaticResource HelperText}" />
+                                    </VerticalStackLayout>
+                                </Border>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+
+                    <Border x:Name="ReceiptPanel" Style="{StaticResource AlertCard}" IsVisible="False">
+                        <VerticalStackLayout Spacing="12">
+                            <Label Text="Registrar recepción del concepto seleccionado" Style="{StaticResource SectionTitle}" />
+                            <Label x:Name="ReceiptLineTitle" FontAttributes="Bold" />
+                            <Grid ColumnDefinitions="*,*" ColumnSpacing="18">
+                                <VerticalStackLayout Spacing="4">
+                                    <Label Text="Producto destino: código o SKU *" Style="{StaticResource FieldLabel}" />
+                                    <Entry x:Name="ReceiptProductCodeEntry" Style="{StaticResource FormEntry}" />
+                                    <Button Text="Crear producto nuevo" Style="{StaticResource SecondaryButton}" HorizontalOptions="Start" Clicked="CreateProductForReceipt_Clicked" />
+                                </VerticalStackLayout>
+                                <VerticalStackLayout Grid.Column="1" Spacing="4">
+                                    <Label Text="Cantidad recibida *" Style="{StaticResource FieldLabel}" />
+                                    <Entry x:Name="ReceiptQuantityEntry" Style="{StaticResource FormEntry}" Keyboard="Numeric" />
+                                </VerticalStackLayout>
+                            </Grid>
+                            <Grid ColumnDefinitions="*,*" ColumnSpacing="18">
+                                <VerticalStackLayout Spacing="4">
+                                    <Label Text="Código de lote — Opcional" Style="{StaticResource FieldLabel}" />
+                                    <Entry x:Name="ReceiptLotCodeEntry" Style="{StaticResource FormEntry}" />
+                                </VerticalStackLayout>
+                                <VerticalStackLayout Grid.Column="1" Spacing="4">
+                                    <Label Text="Costo unitario — Opcional" Style="{StaticResource FieldLabel}" />
+                                    <Entry x:Name="ReceiptCostEntry" Style="{StaticResource FormEntry}" Keyboard="Numeric" />
+                                </VerticalStackLayout>
+                            </Grid>
+                            <Grid ColumnDefinitions="*,*" ColumnSpacing="18">
+                                <VerticalStackLayout>
+                                    <HorizontalStackLayout Spacing="8">
+                                        <CheckBox x:Name="HasManufacturingDateCheck" CheckedChanged="HasManufacturingDateCheck_Changed" />
+                                        <Label Text="Registrar fecha de fabricación" VerticalOptions="Center" Style="{StaticResource FieldLabel}" />
+                                    </HorizontalStackLayout>
+                                    <DatePicker x:Name="ManufacturingDatePicker" IsVisible="False" Style="{StaticResource FormDatePicker}" />
+                                </VerticalStackLayout>
+                                <VerticalStackLayout Grid.Column="1">
+                                    <HorizontalStackLayout Spacing="8">
+                                        <CheckBox x:Name="HasExpirationDateCheck" CheckedChanged="HasExpirationDateCheck_Changed" />
+                                        <Label Text="Registrar fecha de caducidad" VerticalOptions="Center" Style="{StaticResource FieldLabel}" />
+                                    </HorizontalStackLayout>
+                                    <DatePicker x:Name="ReceiptExpirationDatePicker" IsVisible="False" Style="{StaticResource FormDatePicker}" />
+                                </VerticalStackLayout>
+                            </Grid>
+                            <Label Text="Notas de recepción — Opcional" Style="{StaticResource FieldLabel}" />
+                            <Entry x:Name="ReceiptNotesEntry" Style="{StaticResource FormEntry}" />
+                            <Button Text="Confirmar recepción" Style="{StaticResource PrimaryButton}" HorizontalOptions="Start" Clicked="ReceiveSelectedLine_Clicked" />
+                            <Label x:Name="ReceiptResultLabel" Style="{StaticResource ErrorText}" />
+                        </VerticalStackLayout>
+                    </Border>
+
+                    <Grid ColumnDefinitions="2*,Auto" ColumnSpacing="12">
+                        <VerticalStackLayout Spacing="4">
+                            <Label Text="Motivo de cancelación *" Style="{StaticResource FieldLabel}" />
+                            <Entry x:Name="CancelReasonEntry" Style="{StaticResource FormEntry}" />
+                        </VerticalStackLayout>
+                        <Button x:Name="CancelOrderButton" Grid.Column="1" Text="Cancelar pedido" Style="{StaticResource DangerButton}" VerticalOptions="End" Clicked="CancelOrder_Clicked" />
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>
