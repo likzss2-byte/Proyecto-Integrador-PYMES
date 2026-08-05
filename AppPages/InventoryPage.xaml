@@ -30,7 +30,28 @@
 				SemanticProperties.HeadingLevel="Level1"
 			/>
 		</Grid>
-		<templates:SortButton 
+		<CollectionView
+			x:Name="InventoryItems"
+			Grid.Row="1"
+			Margin="20,12"
+			SelectionMode="Single"
+			SelectionChanged="InventoryItems_SelectionChanged">
+			<CollectionView.EmptyView>
+				<Label Text="Aún no hay elementos por mostrar" HorizontalOptions="Center" VerticalOptions="Center" />
+			</CollectionView.EmptyView>
+			<CollectionView.ItemTemplate>
+				<DataTemplate>
+					<Border Margin="0,4" Padding="12" Stroke="{AppThemeBinding Light=#D0D0D0, Dark=#505050}" StrokeShape="RoundRectangle 12">
+						<Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
+							<Label Text="{Binding Name}" FontAttributes="Bold" />
+							<Label Grid.Row="1" Text="{Binding DisplayCode}" FontSize="Small" />
+							<Label Grid.Column="1" Grid.RowSpan="2" Text="{Binding DisplayStock}" VerticalOptions="Center" />
+						</Grid>
+					</Border>
+				</DataTemplate>
+			</CollectionView.ItemTemplate>
+		</CollectionView>
+		<templates:SortButton
 			x:Name="InventorySortButton"
 			SortChanged="InventorySortButton_SortChanged"
 			Grid.Row="2"
@@ -38,6 +59,7 @@
 			Margin="22,12,22,12"
 			IsVisible="True"/>
 		<templates:SearchBar
+			x:Name="InventorySearch"
 			Grid.Row="3"
 			VerticalOptions="End">
 		</templates:SearchBar>

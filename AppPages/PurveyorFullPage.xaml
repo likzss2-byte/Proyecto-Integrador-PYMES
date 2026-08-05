@@ -1,6 +1,31 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:templates="clr-namespace:InventorySystem.VisualElementsTemplates"
              x:Class="InventorySystem.AppPages.PurveyorFullPage"
-             Title="PurveyorFullPage">
+             Shell.NavBarIsVisible="False">
+    <Grid RowDefinitions="Auto,Auto,*,Auto">
+        <Grid Grid.Row="0">
+            <Border BackgroundColor="#75E843" HorizontalOptions="Fill" Padding="28" />
+            <Label Margin="16,2,0,0" VerticalOptions="Center" FontAttributes="Bold" FontSize="Large" Text="Proveedores" />
+        </Grid>
+        <SearchBar x:Name="SupplierSearch" Grid.Row="1" Margin="20,12" Placeholder="Buscar..." TextChanged="SupplierSearch_TextChanged" />
+        <CollectionView x:Name="SupplierList" Grid.Row="2" Margin="20,0" SelectionMode="Single" SelectionChanged="SupplierList_SelectionChanged">
+            <CollectionView.EmptyView>
+                <Label Text="Aún no hay proveedores por mostrar" HorizontalOptions="Center" VerticalOptions="Center" />
+            </CollectionView.EmptyView>
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <Border Margin="0,4" Padding="12" Stroke="{AppThemeBinding Light=#D0D0D0, Dark=#505050}" StrokeShape="RoundRectangle 12">
+                        <VerticalStackLayout>
+                            <Label Text="{Binding CompanyName}" FontAttributes="Bold" />
+                            <Label Text="{Binding ContactName}" FontSize="Small" />
+                            <Label Text="{Binding Phone}" FontSize="Small" />
+                        </VerticalStackLayout>
+                    </Border>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+        <templates:Dock Grid.Row="3" VerticalOptions="End" />
+    </Grid>
 </ContentPage>

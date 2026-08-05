@@ -2,11 +2,36 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="InventorySystem.AppPages.NewOrderPage"
->
-    <VerticalStackLayout>
-        <Label 
-            Text="Welcome to .NET MAUI!"
-            VerticalOptions="Center" 
-            HorizontalOptions="Center" />
-    </VerticalStackLayout>
+             Title="Nueva entrada">
+    <ScrollView>
+        <VerticalStackLayout Padding="20" Spacing="8">
+            <Label Text="Entrada de inventario" FontSize="Large" FontAttributes="Bold" />
+            <Picker x:Name="SupplierPicker" Title="Proveedor (opcional)" />
+            <Entry x:Name="ProductCodeEntry" Placeholder="Código de barras o SKU" Completed="AddLine_Clicked" />
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                <Entry x:Name="QuantityEntry" Placeholder="Cantidad" Keyboard="Numeric" />
+                <Entry x:Name="UnitCostEntry" Grid.Column="1" Placeholder="Costo unitario" Keyboard="Numeric" />
+            </Grid>
+            <Button Text="Agregar producto" Clicked="AddLine_Clicked" />
+            <CollectionView x:Name="LineList" HeightRequest="220">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <Grid Padding="4" ColumnDefinitions="*,Auto">
+                            <VerticalStackLayout>
+                                <Label Text="{Binding DisplayName}" FontAttributes="Bold" />
+                                <Label Text="{Binding DisplayDetail}" FontSize="Small" />
+                            </VerticalStackLayout>
+                            <Button Grid.Column="1" Text="Quitar" Clicked="RemoveLine_Clicked" CommandParameter="{Binding .}" />
+                        </Grid>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+            <Label x:Name="TotalLabel" Text="Total: $0.00" FontAttributes="Bold" />
+            <Editor x:Name="NotesEntry" Placeholder="Notas" AutoSize="TextChanges" />
+            <Button Text="Confirmar entrada" BackgroundColor="#75E843" Clicked="ConfirmEntry_Clicked" />
+            <Entry x:Name="CancelReasonEntry" Placeholder="Motivo de cancelación" IsVisible="False" />
+            <Button x:Name="CancelEntryButton" Text="Cancelar última entrada" IsVisible="False" Clicked="CancelEntry_Clicked" />
+            <Label x:Name="ResultLabel" />
+        </VerticalStackLayout>
+    </ScrollView>
 </ContentPage>

@@ -2,11 +2,37 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="InventorySystem.AppPages.ItemFullPage"
-             Title="ItemFullPage">
-    <VerticalStackLayout>
-        <Label 
-            Text="Welcome to .NET MAUI!"
-            VerticalOptions="Center" 
-            HorizontalOptions="Center" />
-    </VerticalStackLayout>
+             Title="Producto">
+    <ScrollView>
+        <VerticalStackLayout Padding="20" Spacing="10">
+            <Label x:Name="ProductNameLabel" FontSize="Large" FontAttributes="Bold" />
+            <Label x:Name="ProductCodeLabel" />
+            <Label x:Name="ProductStockLabel" FontAttributes="Bold" />
+
+            <Label Text="Ajuste manual" FontAttributes="Bold" Margin="0,12,0,0" />
+            <Entry x:Name="AdjustmentQuantity" Placeholder="Cantidad positiva o negativa" Keyboard="Numeric" />
+            <Entry x:Name="AdjustmentReason" Placeholder="Motivo obligatorio" />
+            <Button Text="Aplicar ajuste" BackgroundColor="#75E843" Clicked="ApplyAdjustment_Clicked" />
+
+            <Label Text="Conteo físico" FontAttributes="Bold" Margin="0,12,0,0" />
+            <Entry x:Name="PhysicalStock" Placeholder="Inventario físico" Keyboard="Numeric" />
+            <Entry x:Name="CountNotes" Placeholder="Notas del conteo" />
+            <Button Text="Guardar conteo" Clicked="CreateCount_Clicked" />
+            <Button x:Name="ConfirmCountButton" Text="Confirmar ajuste del conteo" IsVisible="False" BackgroundColor="#75E843" Clicked="ConfirmCount_Clicked" />
+            <Label x:Name="CountDifferenceLabel" />
+
+            <Label Text="Historial" FontAttributes="Bold" Margin="0,12,0,0" />
+            <CollectionView x:Name="MovementList" HeightRequest="240">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <Grid Padding="4" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
+                            <Label Text="{Binding Type}" />
+                            <Label Grid.Column="1" Text="{Binding Quantity}" />
+                            <Label Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding Reason}" FontSize="Small" />
+                        </Grid>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </VerticalStackLayout>
+    </ScrollView>
 </ContentPage>
