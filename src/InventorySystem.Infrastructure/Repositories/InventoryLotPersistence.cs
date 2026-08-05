@@ -47,7 +47,27 @@ internal static class InventoryLotPersistence
             receiptId,
             receivedAt,
             receivedAt);
-        return connection.ExecuteScalar<long>("SELECT last_insert_rowid();");
+        var lotId = connection.ExecuteScalar<long>("SELECT last_insert_rowid();");
+        if (supplierId.HasValue)
+        {
+            connection.Execute(
+                """
+                INSERT INTO product_suppliers(
+                    product_id,supplier_id,supplier_sku,reference_cost_basis,active,created_at,updated_at)
+                VALUES(?,?,NULL,?,1,?,?)
+                ON CONFLICT(product_id,supplier_id) DO UPDATE SET
+                    reference_cost_basis=COALESCE(excluded.reference_cost_basis,product_suppliers.reference_cost_basis),
+                    active=1,
+                    updated_at=excluded.updated_at;
+                """,
+                productId,
+                supplierId.Value,
+                unitCost.HasValue ? SqliteValues.ToMoney(unitCost.Value) : null,
+                receivedAt,
+                receivedAt);
+        }
+
+        return lotId;
     }
 
     public static IReadOnlyList<LotAllocation> ApplyStockChange(

@@ -29,10 +29,20 @@ public enum InventoryDocumentStatus
     Cancelled = 2
 }
 
+public enum InventoryCountType
+{
+    BySupplier = 0,
+    ByBrand = 1,
+    FreeOperational = 2
+}
+
 public enum InventoryCountStatus
 {
     Draft = 0,
-    Confirmed = 1
+    Completed = 1,
+    Confirmed = Completed,
+    InProgress = 2,
+    Cancelled = 3
 }
 
 public enum InventoryMovementType
@@ -235,6 +245,7 @@ public sealed class InventoryMovement
     public decimal ResultingStock { get; set; }
     public string Reference { get; set; } = string.Empty;
     public string? Reason { get; set; }
+    public long? InventoryCountId { get; set; }
     public DateTime OccurredAt { get; set; }
     public List<InventoryMovementLot> LotAllocations { get; set; } = [];
 }
@@ -355,12 +366,31 @@ public sealed class InventoryCount
     public long Id { get; set; }
     public long BusinessId { get; set; }
     public string Reference { get; set; } = string.Empty;
+    public InventoryCountType Type { get; set; } = InventoryCountType.FreeOperational;
+    public long? SupplierId { get; set; }
+    public string? SupplierName { get; set; }
+    public string? Brand { get; set; }
     public InventoryCountStatus Status { get; set; }
     public string? Notes { get; set; }
+    public DateTime StartedAt { get; set; }
     public DateTime CountedAt { get; set; }
     public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
     public DateTime? ConfirmedAt { get; set; }
+    public DateTime? CancelledAt { get; set; }
     public List<InventoryCountLine> Lines { get; set; } = [];
+
+    public int TotalProducts => Lines.Count;
+    public int CountedProducts => Lines.Count(line => line.Counted);
+    public int PendingProducts => TotalProducts - CountedProducts;
+    public bool IsEditable => Status is InventoryCountStatus.Draft or InventoryCountStatus.InProgress;
+    public string DisplayMode => Type switch
+    {
+        InventoryCountType.BySupplier => $"Por proveedor · {SupplierName ?? "Sin proveedor"}",
+        InventoryCountType.ByBrand => $"Por marca · {Brand ?? "Sin marca"}",
+        _ => "Inventario operativo"
+    };
+    public string DisplayProgress => $"{CountedProducts} de {TotalProducts} productos contados";
 }
 
 public sealed class InventoryCountLine
@@ -369,14 +399,63 @@ public sealed class InventoryCountLine
     public long CountId { get; set; }
     public long ProductId { get; set; }
     public string Code { get; set; } = string.Empty;
+    public string Sku { get; set; } = string.Empty;
+    public string? Barcode { get; set; }
     public string ProductName { get; set; } = string.Empty;
+    public string? Brand { get; set; }
     public UnitOfMeasure UnitOfMeasure { get; set; }
+    public ExpirationMode ExpirationMode { get; set; }
     public decimal TheoreticalStock { get; set; }
-    public decimal PhysicalStock { get; set; }
-    public decimal Difference => PhysicalStock - TheoreticalStock;
+    public decimal? PhysicalStock { get; set; }
+    public DateTime? CountedAt { get; set; }
+    public string? Observations { get; set; }
+    public bool CountByLot { get; set; }
+    public List<InventoryCountLotLine> LotLines { get; set; } = [];
+    public bool Counted => PhysicalStock.HasValue;
+    public decimal Difference => Counted ? PhysicalStock!.Value - TheoreticalStock : 0m;
     public decimal Missing => Difference < 0 ? decimal.Abs(Difference) : 0m;
     public decimal Surplus => Difference > 0 ? Difference : 0m;
+    public string UnitSymbol => UnitOfMeasure switch
+    {
+        UnitOfMeasure.Kilogram => "kg",
+        UnitOfMeasure.Liter => "L",
+        _ => "u"
+    };
 }
+
+public sealed class InventoryCountLotLine
+{
+    public long Id { get; set; }
+    public long CountLineId { get; set; }
+    public long LotId { get; set; }
+    public string LotCode { get; set; } = string.Empty;
+    public DateOnly? ExpirationDate { get; set; }
+    public decimal TheoreticalQuantity { get; set; }
+    public decimal? PhysicalQuantity { get; set; }
+    public DateTime? CountedAt { get; set; }
+    public string? Observations { get; set; }
+    public bool Counted => PhysicalQuantity.HasValue;
+    public decimal Difference => Counted ? PhysicalQuantity!.Value - TheoreticalQuantity : 0m;
+    public string ExpirationStatus => ExpirationDate is null
+        ? "Sin caducidad"
+        : ExpirationDate < DateOnly.FromDateTime(DateTime.Today)
+            ? "Caducado"
+            : ExpirationDate <= DateOnly.FromDateTime(DateTime.Today).AddDays(7)
+                ? "Próximo a caducar"
+                : "Vigente";
+}
+
+public sealed record InventoryCountProgress(int Total, int Counted, int Pending)
+{
+    public static InventoryCountProgress From(InventoryCount count) =>
+        new(count.TotalProducts, count.CountedProducts, count.PendingProducts);
+}
+
+public sealed record InventoryCountSummary(
+    int WithoutDifference,
+    int WithMissing,
+    int WithSurplus,
+    int Pending);
 
 public sealed record ProductInput(
     string Sku,
@@ -421,6 +500,12 @@ public sealed record InventoryDocumentLineInput(
 public sealed record InventoryAdjustmentInput(long ProductId, decimal Quantity, string Reason);
 
 public sealed record InventoryCountLineInput(long ProductId, decimal PhysicalStock);
+
+public sealed record InventoryCountSessionInput(
+    InventoryCountType Type,
+    long? SupplierId = null,
+    string? Brand = null,
+    string? Notes = null);
 
 public sealed record InventoryLotReceiptInput(
     long ProductId,

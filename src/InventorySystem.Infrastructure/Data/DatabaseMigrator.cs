@@ -5,7 +5,7 @@ namespace InventorySystem.Infrastructure.Data;
 
 internal static class DatabaseMigrator
 {
-    public const int LatestSchemaVersion = 5;
+    public const int LatestSchemaVersion = 6;
 
     public static string? Migrate(string databasePath)
     {
@@ -58,6 +58,9 @@ internal static class DatabaseMigrator
                         break;
                     case 5:
                         CreatePurchaseOrderAndLotTraceabilitySchema(connection);
+                        break;
+                    case 6:
+                        CreateInventorySessionSchema(connection);
                         break;
                     default:
                         throw new InvalidOperationException($"No existe la migración {nextVersion}.");
@@ -522,6 +525,100 @@ internal static class DatabaseMigrator
             """,
             "CREATE INDEX IF NOT EXISTS ix_inventory_movement_lots_movement ON inventory_movement_lots(movement_id);",
             "CREATE INDEX IF NOT EXISTS ix_inventory_movement_lots_lot ON inventory_movement_lots(lot_id);");
+    }
+
+    private static void CreateInventorySessionSchema(SQLiteConnection connection)
+    {
+        ExecuteEach(connection,
+            "DROP TABLE IF EXISTS inventory_count_lines_v6;",
+            "DROP TABLE IF EXISTS inventory_counts_v6;",
+            """
+            CREATE TABLE inventory_counts_v6 (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                business_id INTEGER NOT NULL REFERENCES businesses(id),
+                reference TEXT NOT NULL COLLATE NOCASE,
+                inventory_type INTEGER NOT NULL DEFAULT 2 CHECK(inventory_type BETWEEN 0 AND 2),
+                supplier_id INTEGER NULL REFERENCES suppliers(id),
+                brand TEXT NULL COLLATE NOCASE,
+                status INTEGER NOT NULL DEFAULT 0 CHECK(status BETWEEN 0 AND 3),
+                notes TEXT NULL,
+                started_at TEXT NOT NULL,
+                counted_at TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                confirmed_at TEXT NULL,
+                cancelled_at TEXT NULL,
+                UNIQUE(business_id, reference),
+                CHECK(
+                    (inventory_type=0 AND supplier_id IS NOT NULL AND brand IS NULL) OR
+                    (inventory_type=1 AND supplier_id IS NULL AND brand IS NOT NULL AND trim(brand)<>'') OR
+                    (inventory_type=2 AND supplier_id IS NULL AND brand IS NULL)
+                )
+            );
+            """,
+            """
+            CREATE TABLE inventory_count_lines_v6 (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                count_id INTEGER NOT NULL REFERENCES inventory_counts_v6(id),
+                product_id INTEGER NOT NULL REFERENCES products(id),
+                theoretical_milli INTEGER NOT NULL,
+                physical_milli INTEGER NULL CHECK(physical_milli IS NULL OR physical_milli >= 0),
+                difference_milli INTEGER NULL,
+                counted INTEGER NOT NULL DEFAULT 0 CHECK(counted IN (0,1)),
+                counted_at TEXT NULL,
+                observations TEXT NULL,
+                count_by_lot INTEGER NOT NULL DEFAULT 0 CHECK(count_by_lot IN (0,1)),
+                UNIQUE(count_id, product_id)
+            );
+            """,
+            """
+            INSERT INTO inventory_counts_v6(
+                id,business_id,reference,inventory_type,supplier_id,brand,status,notes,
+                started_at,counted_at,created_at,updated_at,confirmed_at,cancelled_at)
+            SELECT id,business_id,reference,2,NULL,NULL,status,notes,
+                   counted_at,counted_at,created_at,COALESCE(confirmed_at,created_at),confirmed_at,NULL
+            FROM inventory_counts;
+            """,
+            """
+            INSERT INTO inventory_count_lines_v6(
+                id,count_id,product_id,theoretical_milli,physical_milli,difference_milli,
+                counted,counted_at,observations,count_by_lot)
+            SELECT id,count_id,product_id,theoretical_milli,physical_milli,difference_milli,
+                   1,NULL,NULL,0
+            FROM inventory_count_lines;
+            """,
+            "DROP TABLE inventory_count_lines;",
+            "DROP TABLE inventory_counts;",
+            "ALTER TABLE inventory_counts_v6 RENAME TO inventory_counts;",
+            "ALTER TABLE inventory_count_lines_v6 RENAME TO inventory_count_lines;",
+            "CREATE INDEX ix_inventory_counts_filter ON inventory_counts(business_id, inventory_type, status, updated_at DESC);",
+            "CREATE INDEX ix_inventory_counts_supplier ON inventory_counts(supplier_id, status);",
+            "CREATE INDEX ix_inventory_counts_brand ON inventory_counts(business_id, brand, status);",
+            "CREATE INDEX ix_inventory_count_lines_count ON inventory_count_lines(count_id, id);",
+            "CREATE INDEX ix_inventory_count_lines_product ON inventory_count_lines(product_id, count_id);",
+            """
+            CREATE TABLE inventory_count_lot_lines (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                count_line_id INTEGER NOT NULL REFERENCES inventory_count_lines(id),
+                lot_id INTEGER NOT NULL REFERENCES inventory_lots(id),
+                theoretical_milli INTEGER NOT NULL CHECK(theoretical_milli >= 0),
+                physical_milli INTEGER NULL CHECK(physical_milli IS NULL OR physical_milli >= 0),
+                counted INTEGER NOT NULL DEFAULT 0 CHECK(counted IN (0,1)),
+                counted_at TEXT NULL,
+                observations TEXT NULL,
+                UNIQUE(count_line_id, lot_id)
+            );
+            """,
+            "CREATE INDEX ix_inventory_count_lot_lines_line ON inventory_count_lot_lines(count_line_id, id);",
+            "CREATE INDEX ix_inventory_count_lot_lines_lot ON inventory_count_lot_lines(lot_id, count_line_id);");
+
+        AddColumnIfMissing(
+            connection,
+            "inventory_movements",
+            "inventory_count_id",
+            "INTEGER NULL REFERENCES inventory_counts(id)");
+        connection.Execute(
+            "CREATE INDEX IF NOT EXISTS ix_inventory_movements_count ON inventory_movements(inventory_count_id, occurred_at DESC);");
     }
 
     private static void AddColumnIfMissing(

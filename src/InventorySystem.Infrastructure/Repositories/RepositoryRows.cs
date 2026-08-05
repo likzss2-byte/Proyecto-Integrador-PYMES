@@ -92,6 +92,7 @@ internal sealed class MovementRow
     public long ResultingStockMilli { get; set; }
     public string Reference { get; set; } = string.Empty;
     public string? Reason { get; set; }
+    public long? InventoryCountId { get; set; }
     public string OccurredAt { get; set; } = string.Empty;
 }
 
@@ -116,7 +117,7 @@ internal sealed class CountLineRow
     public string ProductName { get; set; } = string.Empty;
     public int UnitOfMeasure { get; set; }
     public long TheoreticalMilli { get; set; }
-    public long PhysicalMilli { get; set; }
+    public long? PhysicalMilli { get; set; }
 }
 
 internal static class RepositoryRowMapper

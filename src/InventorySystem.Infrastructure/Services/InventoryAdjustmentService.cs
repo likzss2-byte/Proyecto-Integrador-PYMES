@@ -127,13 +127,17 @@ public sealed class InventoryAdjustmentService
                 : reference.Trim();
             connection.Execute(
                 """
-                INSERT INTO inventory_counts(business_id,reference,status,notes,counted_at,created_at,confirmed_at)
-                VALUES(?,?,?,?,?,?,NULL);
+                INSERT INTO inventory_counts(
+                    business_id,reference,inventory_type,supplier_id,brand,status,notes,
+                    started_at,counted_at,created_at,updated_at,confirmed_at,cancelled_at)
+                VALUES(?,?,2,NULL,NULL,?,?,?,?,?,?,NULL,NULL);
                 """,
                 businessId,
                 normalizedReference,
                 (int)InventoryCountStatus.Draft,
                 ProductRepository.DbText(notes),
+                now,
+                now,
                 now,
                 now);
             var countId = connection.ExecuteScalar<long>("SELECT last_insert_rowid();");
@@ -172,6 +176,11 @@ public sealed class InventoryAdjustmentService
             var changes = new List<(Product Product, decimal Physical, decimal Difference)>();
             foreach (var line in count.Lines)
             {
+                if (!line.PhysicalStock.HasValue)
+                {
+                    throw new InventoryRuleException($"El producto {line.ProductName} todavía no ha sido contado.");
+                }
+
                 var product = ProductRepository.GetRow(connection, businessId, line.ProductId)?.ToDomain()
                     ?? throw new InventoryRuleException("Uno de los productos ya no existe.");
                 if (product.Stock != line.TheoreticalStock)
@@ -180,7 +189,7 @@ public sealed class InventoryAdjustmentService
                         $"El stock de {product.Name} cambió después del conteo. Captura un conteo nuevo.");
                 }
 
-                changes.Add((product, line.PhysicalStock, line.PhysicalStock - product.Stock));
+                changes.Add((product, line.PhysicalStock.Value, line.PhysicalStock.Value - product.Stock));
             }
 
             var now = SqliteValues.Date(DateTime.UtcNow);
@@ -246,7 +255,7 @@ public sealed class InventoryAdjustmentService
                 SELECT m.id Id,m.business_id BusinessId,m.product_id ProductId,p.name ProductName,
                        m.movement_type MovementType,m.quantity_milli QuantityMilli,
                        m.previous_stock_milli PreviousStockMilli,m.resulting_stock_milli ResultingStockMilli,
-                       m.reference Reference,m.reason Reason,m.occurred_at OccurredAt
+                       m.reference Reference,m.reason Reason,m.inventory_count_id InventoryCountId,m.occurred_at OccurredAt
                 FROM inventory_movements m JOIN products p ON p.id=m.product_id
                 WHERE m.business_id=?
                 """;
@@ -265,6 +274,7 @@ public sealed class InventoryAdjustmentService
                 ResultingStock = SqliteValues.FromMilli(row.ResultingStockMilli),
                 Reference = row.Reference,
                 Reason = row.Reason,
+                InventoryCountId = row.InventoryCountId,
                 OccurredAt = SqliteValues.ParseDate(row.OccurredAt),
                 LotAllocations = InventoryLotPersistence.GetMovementAllocations(connection, row.Id)
                     .Select(allocation => new InventoryMovementLot(allocation.LotId, allocation.Quantity))
@@ -316,7 +326,9 @@ public sealed class InventoryAdjustmentService
                 ProductName = line.ProductName,
                 UnitOfMeasure = (UnitOfMeasure)line.UnitOfMeasure,
                 TheoreticalStock = SqliteValues.FromMilli(line.TheoreticalMilli),
-                PhysicalStock = SqliteValues.FromMilli(line.PhysicalMilli)
+                PhysicalStock = line.PhysicalMilli.HasValue
+                    ? SqliteValues.FromMilli(line.PhysicalMilli.Value)
+                    : null
             }).ToList()
         };
     }

@@ -217,14 +217,15 @@ public sealed class ProductRepository
         decimal resultingStock,
         string reference,
         string? reason,
-        string occurredAt)
+        string occurredAt,
+        long? inventoryCountId = null)
     {
         connection.Execute(
             """
             INSERT INTO inventory_movements(
                 business_id,product_id,movement_type,quantity_milli,previous_stock_milli,
-                resulting_stock_milli,reference,reason,occurred_at)
-            VALUES(?,?,?,?,?,?,?,?,?);
+                resulting_stock_milli,reference,reason,occurred_at,inventory_count_id)
+            VALUES(?,?,?,?,?,?,?,?,?,?);
             """,
             businessId,
             productId,
@@ -234,7 +235,8 @@ public sealed class ProductRepository
             SqliteValues.ToMilli(resultingStock),
             reference,
             DbText(reason),
-            occurredAt);
+            occurredAt,
+            inventoryCountId);
         return connection.ExecuteScalar<long>("SELECT last_insert_rowid();");
     }
 
