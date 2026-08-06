@@ -2,6 +2,6 @@
 {
 	public class LocalBusiness
 	{
-		public string LocalName { get; set; }
+		public string LocalName { get; set; } = string.Empty;
 	}
 }

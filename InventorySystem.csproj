@@ -70,7 +70,20 @@
 		<PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
 		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.0" />
 		<PackageReference Include="sqlite-net-pcl" Version="1.11.285" />
-		<PackageReference Include="SQLitePCLRaw.bundle_green" Version="2.1.11" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <ProjectReference Include="src\InventorySystem.Domain\InventorySystem.Domain.csproj" />
+	  <ProjectReference Include="src\InventorySystem.Infrastructure\InventorySystem.Infrastructure.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Compile Remove="src\**\*.cs" />
+	  <Compile Remove="tests\**\*.cs" />
+	  <EmbeddedResource Remove="src\**\*" />
+	  <EmbeddedResource Remove="tests\**\*" />
+	  <None Remove="src\**\*" />
+	  <None Remove="tests\**\*" />
 	</ItemGroup>
 
 	<ItemGroup>

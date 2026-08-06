@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:controls="clr-namespace:InventorySystem.Controls"
+             x:Class="InventorySystem.AppPages.BarcodeScannerPage"
+             Title="Escanear código">
+    <Grid RowDefinitions="Auto,Auto,*,Auto"
+          Padding="20"
+          RowSpacing="16">
+        <VerticalStackLayout Spacing="4">
+            <Label Text="Escanear con cámara"
+                   Style="{StaticResource DesktopPageTitle}" />
+            <Label Text="Coloca el código dentro del recuadro. Puedes cambiar de cámara cuando el equipo tenga más de una."
+                   Style="{StaticResource DesktopPageSubtitle}" />
+        </VerticalStackLayout>
+
+        <Border Grid.Row="1"
+                Style="{StaticResource Card}"
+                Padding="14">
+            <Grid ColumnDefinitions="*,Auto"
+                  ColumnSpacing="12">
+                <VerticalStackLayout Spacing="4">
+                    <Label Text="Cámara disponible" Style="{StaticResource FieldLabel}" />
+                    <Picker x:Name="CameraPicker"
+                            Style="{StaticResource FormPicker}"
+                            Title="Selecciona una cámara"
+                            ItemDisplayBinding="{Binding SelectorLabel}"
+                            IsEnabled="False"
+                            SelectedIndexChanged="CameraPicker_SelectedIndexChanged" />
+                    <Label x:Name="SelectedCameraLabel"
+                           Text="Ninguna cámara seleccionada."
+                           Style="{StaticResource InfoText}" />
+                    <Label x:Name="CameraCountLabel"
+                           Text="Buscando cámaras conectadas..."
+                           Style="{StaticResource HelperText}" />
+                </VerticalStackLayout>
+                <Button Grid.Column="1"
+                        Text="Actualizar lista"
+                        Style="{StaticResource SecondaryButton}"
+                        VerticalOptions="End"
+                        Clicked="RefreshCameras_Clicked" />
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="2"
+                Style="{StaticResource Card}"
+                Padding="0"
+                StrokeShape="RoundRectangle 18"
+                MinimumHeightRequest="360">
+            <Grid BackgroundColor="#111827">
+                <controls:BarcodeCameraPreview x:Name="CameraPreview"
+                                                HorizontalOptions="Fill"
+                                                VerticalOptions="Fill" />
+                <Grid Margin="42"
+                      HorizontalOptions="Fill"
+                      VerticalOptions="Center"
+                      HeightRequest="180"
+                      InputTransparent="True">
+                    <Border Stroke="#E5F6FF"
+                            StrokeThickness="3"
+                            StrokeDashArray="8,6"
+                            BackgroundColor="#22000000"
+                            StrokeShape="RoundRectangle 18" />
+                </Grid>
+                <Border x:Name="BusyPanel"
+                        IsVisible="False"
+                        BackgroundColor="#AA000000"
+                        Padding="20"
+                        StrokeShape="RoundRectangle 16"
+                        HorizontalOptions="Center"
+                        VerticalOptions="Center">
+                    <HorizontalStackLayout Spacing="12">
+                        <ActivityIndicator IsRunning="True" />
+                        <Label Text="Procesando lectura..."
+                               TextColor="White"
+                               VerticalOptions="Center" />
+                    </HorizontalStackLayout>
+                </Border>
+            </Grid>
+        </Border>
+
+        <VerticalStackLayout Grid.Row="3" Spacing="10">
+            <Label x:Name="StatusLabel"
+                   Text="Preparando cámara..."
+                   Style="{StaticResource InfoText}" />
+            <Label x:Name="PermissionLabel"
+                   IsVisible="False"
+                   Style="{StaticResource ErrorText}" />
+
+            <FlexLayout Wrap="Wrap"
+                        Direction="Row"
+                        AlignItems="Center"
+                        JustifyContent="Start">
+                <Button Text="Reintentar"
+                        Style="{StaticResource SecondaryButton}"
+                        Margin="0,0,8,8"
+                        Clicked="Retry_Clicked" />
+                <Button Text="Escribir manualmente"
+                        Style="{StaticResource SecondaryButton}"
+                        Margin="0,0,8,8"
+                        Clicked="Manual_Clicked" />
+                <Button Text="Cancelar"
+                        Style="{StaticResource DangerButton}"
+                        Margin="0,0,8,8"
+                        Clicked="Cancel_Clicked" />
+            </FlexLayout>
+        </VerticalStackLayout>
+    </Grid>
+</ContentPage>

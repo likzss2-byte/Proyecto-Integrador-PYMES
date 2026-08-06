@@ -2,14 +2,13 @@
 <ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="InventorySystem.VisualElementsTemplates.SortButton">
-	<Grid
-        RowDefinitions="Auto, Auto">
+	<Grid RowDefinitions="Auto,Auto">
 		<Border
-        Margin="0,12,0,12"
+        Margin="0,0,0,8"
         Grid.Row="0"
         x:Name="SortMenu"
         IsVisible="False"
-        HorizontalOptions="End"
+        HorizontalOptions="Fill"
         Padding="8"
         BackgroundColor="{AppThemeBinding Light=White, Dark=#242424}"
         Stroke="{AppThemeBinding Light=#D0D0D0, Dark=#505050}"
@@ -20,39 +19,33 @@
 				<Button
                 x:Name="RecentSortButton"
                 Text="Recientes"
-                TextColor="White"
-                BackgroundColor="Transparent"
-                HorizontalOptions="End"
+                Style="{StaticResource SecondaryButton}"
+                HorizontalOptions="Fill"
                 Clicked="RecentSortButton_Clicked" />
 
 				<Button
                 x:Name="AlphabeticalSortButton"
                 Text="Alfabético"
-                TextColor="White"
-                BackgroundColor="Transparent"
-                HorizontalOptions="End"
+                Style="{StaticResource SecondaryButton}"
+                HorizontalOptions="Fill"
                 Clicked="AlphabeticalSortButton_Clicked" />
 
 				<Button
                 x:Name="PriceSortButton"
                 Text="Precio"
-                TextColor="White"
-                BackgroundColor="Transparent"
-                HorizontalOptions="End"
+                Style="{StaticResource SecondaryButton}"
+                HorizontalOptions="Fill"
                 Clicked="PriceSortButton_Clicked" />
 
 			</VerticalStackLayout>
 		</Border>
 		<Button
-            HorizontalOptions="End"
+            HorizontalOptions="Fill"
             x:Name="SortButtonElement"
             Grid.Row="1"
             Text="Ordenar"
-            TextColor="White"
-            HeightRequest="36"
-            WidthRequest="90"
-            Padding="12"
-            BackgroundColor="#75E843"
+            Style="{StaticResource PrimaryButton}"
+            MinimumWidthRequest="112"
             Clicked="SortButton_Clicked" />
 	</Grid>
 </ContentView>

@@ -7,7 +7,7 @@ namespace InventorySystem.Objects.InventoryData
 		[PrimaryKey, AutoIncrement]
 		public int PurveyorID { get; set; }
 		[NotNull]
-		public string CompanyRegisteredName { get; set; }
+		public string CompanyRegisteredName { get; set; } = string.Empty;
 
 	}
 	public class PurveyorPhoneNumber
@@ -29,11 +29,11 @@ namespace InventorySystem.Objects.InventoryData
 		[PrimaryKey, AutoIncrement]
 		public int PurveyorAddressID { get; set; }
 		public int PurveyorID { get; set; }
-		public string Country { get; set; }
-		public string State { get; set; }
+		public string Country { get; set; } = string.Empty;
+		public string State { get; set; } = string.Empty;
 		public int? PostalCode { get; set; }
 		public string? Neighborhood { get; set; }
-		public string Street { get; set; }
+		public string Street { get; set; } = string.Empty;
 		public string? AditionalReferences { get; set; }
 	}
 }

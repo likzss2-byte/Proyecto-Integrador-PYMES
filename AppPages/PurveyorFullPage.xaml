@@ -1,6 +1,33 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:templates="clr-namespace:InventorySystem.VisualElementsTemplates"
              x:Class="InventorySystem.AppPages.PurveyorFullPage"
-             Title="PurveyorFullPage">
+             Title="Proveedores">
+    <Grid RowDefinitions="Auto,Auto,*,Auto" Padding="28,24,28,0" MaximumWidthRequest="1080" HorizontalOptions="Center">
+        <VerticalStackLayout Spacing="4">
+            <Label Text="Proveedores" Style="{StaticResource DesktopPageTitle}" />
+            <Label Text="Directorio de proveedores." Style="{StaticResource DesktopPageSubtitle}" />
+        </VerticalStackLayout>
+        <SearchBar x:Name="SupplierSearch" Grid.Row="1" Margin="0,14,0,10" Placeholder="Buscar proveedor" TextChanged="SupplierSearch_TextChanged" />
+        <CollectionView x:Name="SupplierList" Grid.Row="2" SelectionMode="Single" SelectionChanged="SupplierList_SelectionChanged">
+            <CollectionView.EmptyView>
+                <Label Text="Aún no hay proveedores por mostrar." HorizontalOptions="Center" VerticalOptions="Center" Style="{StaticResource HelperText}" />
+            </CollectionView.EmptyView>
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <Border Style="{StaticResource ListRow}" Margin="0,4" Padding="12">
+                        <Grid ColumnDefinitions="2*,*,*" RowDefinitions="Auto,Auto">
+                            <Label Text="{Binding CompanyName}" FontAttributes="Bold" FontSize="16" />
+                            <Label Grid.Row="1" Text="{Binding ContactName}" Style="{StaticResource HelperText}" />
+                            <Label Grid.Column="1" Text="{Binding Phone}" />
+                            <Label Grid.Row="1" Grid.Column="1" Text="{Binding Email}" Style="{StaticResource HelperText}" />
+                            <Label Grid.Column="2" Grid.RowSpan="2" Text="{Binding State}" VerticalOptions="Center" HorizontalTextAlignment="End" />
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+        <templates:Dock Grid.Row="3" IsVisible="{OnPlatform WinUI=False, Default=True}" VerticalOptions="End" />
+    </Grid>
 </ContentPage>

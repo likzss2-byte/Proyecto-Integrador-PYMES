@@ -1,0 +1,673 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="InventorySystem.AppPages.PurchaseOrdersPage"
+             Title="Pedidos y recepciones">
+    <Shell.TitleView>
+        <Grid />
+    </Shell.TitleView>
+    <Grid x:Name="PageRoot"
+          RowDefinitions="Auto,*"
+          Padding="32,24,32,0">
+        <VisualStateManager.VisualStateGroups>
+            <VisualStateGroup x:Name="WindowWidthStates">
+                <VisualState x:Name="SmallWindow">
+                    <VisualState.StateTriggers>
+                        <AdaptiveTrigger MinWindowWidth="0" />
+                    </VisualState.StateTriggers>
+                    <VisualState.Setters>
+                        <Setter TargetName="PageRoot" Property="Padding" Value="16,16,16,0" />
+
+                        <Setter TargetName="OrderDetailsGrid" Property="ColumnDefinitions" Value="*" />
+                        <Setter TargetName="OrderDetailsGrid" Property="RowDefinitions" Value="Auto,Auto,Auto,Auto" />
+                        <Setter TargetName="ManualSupplierField" Property="Grid.Row" Value="1" />
+                        <Setter TargetName="ManualSupplierField" Property="Grid.Column" Value="0" />
+                        <Setter TargetName="ManualSupplierField" Property="Margin" Value="0,12,0,0" />
+                        <Setter TargetName="OrderDateField" Property="Grid.Row" Value="2" />
+                        <Setter TargetName="OrderDateField" Property="Grid.Column" Value="0" />
+                        <Setter TargetName="EstimatedDateField" Property="Grid.Row" Value="3" />
+                        <Setter TargetName="EstimatedDateField" Property="Grid.Column" Value="0" />
+
+                        <Setter TargetName="DescriptionUnitGrid" Property="ColumnDefinitions" Value="*" />
+                        <Setter TargetName="DescriptionUnitGrid" Property="RowDefinitions" Value="Auto,Auto" />
+                        <Setter TargetName="UnitField" Property="Grid.Row" Value="1" />
+                        <Setter TargetName="UnitField" Property="Grid.Column" Value="0" />
+                        <Setter TargetName="UnitField" Property="Margin" Value="0,12,0,0" />
+                        <Setter TargetName="RequestedCostGrid" Property="ColumnDefinitions" Value="*" />
+                        <Setter TargetName="RequestedCostGrid" Property="RowDefinitions" Value="Auto,Auto" />
+                        <Setter TargetName="EstimatedCostField" Property="Grid.Row" Value="1" />
+                        <Setter TargetName="EstimatedCostField" Property="Grid.Column" Value="0" />
+                        <Setter TargetName="EstimatedCostField" Property="Margin" Value="0,12,0,0" />
+
+                        <Setter TargetName="OrderSummaryGrid" Property="ColumnDefinitions" Value="*" />
+                        <Setter TargetName="OrderSummaryGrid" Property="RowDefinitions" Value="Auto,Auto" />
+                        <Setter TargetName="InitialStatusField" Property="Grid.Row" Value="1" />
+                        <Setter TargetName="InitialStatusField" Property="Grid.Column" Value="0" />
+                        <Setter TargetName="InitialStatusField" Property="Margin" Value="0,12,0,0" />
+
+                        <Setter TargetName="RegisteredHeaderGrid" Property="ColumnDefinitions" Value="*" />
+                        <Setter TargetName="RegisteredHeaderGrid" Property="RowDefinitions" Value="Auto,Auto" />
+                        <Setter TargetName="RefreshOrdersButton" Property="Grid.Row" Value="1" />
+                        <Setter TargetName="RefreshOrdersButton" Property="Grid.Column" Value="0" />
+                        <Setter TargetName="RefreshOrdersButton" Property="Margin" Value="0,12,0,0" />
+                        <Setter TargetName="RefreshOrdersButton" Property="HorizontalOptions" Value="Fill" />
+
+                        <Setter TargetName="SelectedHeaderGrid" Property="ColumnDefinitions" Value="*" />
+                        <Setter TargetName="SelectedHeaderGrid" Property="RowDefinitions" Value="Auto,Auto" />
+                        <Setter TargetName="ConfirmOrderButton" Property="Grid.Row" Value="1" />
+                        <Setter TargetName="ConfirmOrderButton" Property="Grid.Column" Value="0" />
+                        <Setter TargetName="ConfirmOrderButton" Property="Margin" Value="0,12,0,0" />
+                        <Setter TargetName="ConfirmOrderButton" Property="HorizontalOptions" Value="Fill" />
+
+                        <Setter TargetName="ReceiptProductGrid" Property="ColumnDefinitions" Value="*" />
+                        <Setter TargetName="ReceiptProductGrid" Property="RowDefinitions" Value="Auto,Auto" />
+                        <Setter TargetName="ReceiptQuantityField" Property="Grid.Row" Value="1" />
+                        <Setter TargetName="ReceiptQuantityField" Property="Grid.Column" Value="0" />
+                        <Setter TargetName="ReceiptQuantityField" Property="Margin" Value="0,12,0,0" />
+                        <Setter TargetName="ReceiptLotCostGrid" Property="ColumnDefinitions" Value="*" />
+                        <Setter TargetName="ReceiptLotCostGrid" Property="RowDefinitions" Value="Auto,Auto" />
+                        <Setter TargetName="ReceiptCostField" Property="Grid.Row" Value="1" />
+                        <Setter TargetName="ReceiptCostField" Property="Grid.Column" Value="0" />
+                        <Setter TargetName="ReceiptCostField" Property="Margin" Value="0,12,0,0" />
+                        <Setter TargetName="ReceiptDateGrid" Property="ColumnDefinitions" Value="*" />
+                        <Setter TargetName="ReceiptDateGrid" Property="RowDefinitions" Value="Auto,Auto" />
+                        <Setter TargetName="ExpirationDateField" Property="Grid.Row" Value="1" />
+                        <Setter TargetName="ExpirationDateField" Property="Grid.Column" Value="0" />
+                        <Setter TargetName="ExpirationDateField" Property="Margin" Value="0,12,0,0" />
+
+                        <Setter TargetName="CancelOrderGrid" Property="ColumnDefinitions" Value="*" />
+                        <Setter TargetName="CancelOrderGrid" Property="RowDefinitions" Value="Auto,Auto" />
+                        <Setter TargetName="CancelOrderButton" Property="Grid.Row" Value="1" />
+                        <Setter TargetName="CancelOrderButton" Property="Grid.Column" Value="0" />
+                        <Setter TargetName="CancelOrderButton" Property="Margin" Value="0,12,0,0" />
+                        <Setter TargetName="CancelOrderButton" Property="HorizontalOptions" Value="Fill" />
+
+                        <Setter TargetName="AddOrderLineButton" Property="HorizontalOptions" Value="Fill" />
+                        <Setter TargetName="SaveOrderButton" Property="HorizontalOptions" Value="Fill" />
+                        <Setter TargetName="CreateProductButton" Property="HorizontalOptions" Value="Fill" />
+                        <Setter TargetName="ReceiveSelectedLineButton" Property="HorizontalOptions" Value="Fill" />
+                    </VisualState.Setters>
+                </VisualState>
+
+                <VisualState x:Name="MediumWindow">
+                    <VisualState.StateTriggers>
+                        <AdaptiveTrigger MinWindowWidth="720" />
+                    </VisualState.StateTriggers>
+                    <VisualState.Setters>
+                        <Setter TargetName="PageRoot" Property="Padding" Value="24,20,24,0" />
+
+                        <Setter TargetName="OrderDetailsGrid" Property="ColumnDefinitions" Value="*,*" />
+                        <Setter TargetName="OrderDetailsGrid" Property="RowDefinitions" Value="Auto,Auto" />
+                        <Setter TargetName="ManualSupplierField" Property="Grid.Row" Value="0" />
+                        <Setter TargetName="ManualSupplierField" Property="Grid.Column" Value="1" />
+                        <Setter TargetName="ManualSupplierField" Property="Margin" Value="0" />
+                        <Setter TargetName="OrderDateField" Property="Grid.Row" Value="1" />
+                        <Setter TargetName="OrderDateField" Property="Grid.Column" Value="0" />
+                        <Setter TargetName="EstimatedDateField" Property="Grid.Row" Value="1" />
+                        <Setter TargetName="EstimatedDateField" Property="Grid.Column" Value="1" />
+
+                        <Setter TargetName="DescriptionUnitGrid" Property="ColumnDefinitions" Value="2*,*" />
+                        <Setter TargetName="DescriptionUnitGrid" Property="RowDefinitions" Value="Auto" />
+                        <Setter TargetName="UnitField" Property="Grid.Row" Value="0" />
+                        <Setter TargetName="UnitField" Property="Grid.Column" Value="1" />
+                        <Setter TargetName="UnitField" Property="Margin" Value="0" />
+                        <Setter TargetName="RequestedCostGrid" Property="ColumnDefinitions" Value="*,*" />
+                        <Setter TargetName="RequestedCostGrid" Property="RowDefinitions" Value="Auto" />
+                        <Setter TargetName="EstimatedCostField" Property="Grid.Row" Value="0" />
+                        <Setter TargetName="EstimatedCostField" Property="Grid.Column" Value="1" />
+                        <Setter TargetName="EstimatedCostField" Property="Margin" Value="0" />
+
+                        <Setter TargetName="OrderSummaryGrid" Property="ColumnDefinitions" Value="2*,*" />
+                        <Setter TargetName="OrderSummaryGrid" Property="RowDefinitions" Value="Auto" />
+                        <Setter TargetName="InitialStatusField" Property="Grid.Row" Value="0" />
+                        <Setter TargetName="InitialStatusField" Property="Grid.Column" Value="1" />
+                        <Setter TargetName="InitialStatusField" Property="Margin" Value="0" />
+
+                        <Setter TargetName="RegisteredHeaderGrid" Property="ColumnDefinitions" Value="*,Auto" />
+                        <Setter TargetName="RegisteredHeaderGrid" Property="RowDefinitions" Value="Auto" />
+                        <Setter TargetName="RefreshOrdersButton" Property="Grid.Row" Value="0" />
+                        <Setter TargetName="RefreshOrdersButton" Property="Grid.Column" Value="1" />
+                        <Setter TargetName="RefreshOrdersButton" Property="Margin" Value="0" />
+                        <Setter TargetName="RefreshOrdersButton" Property="HorizontalOptions" Value="End" />
+
+                        <Setter TargetName="SelectedHeaderGrid" Property="ColumnDefinitions" Value="*,Auto" />
+                        <Setter TargetName="SelectedHeaderGrid" Property="RowDefinitions" Value="Auto" />
+                        <Setter TargetName="ConfirmOrderButton" Property="Grid.Row" Value="0" />
+                        <Setter TargetName="ConfirmOrderButton" Property="Grid.Column" Value="1" />
+                        <Setter TargetName="ConfirmOrderButton" Property="Margin" Value="0" />
+                        <Setter TargetName="ConfirmOrderButton" Property="HorizontalOptions" Value="End" />
+
+                        <Setter TargetName="ReceiptProductGrid" Property="ColumnDefinitions" Value="*,*" />
+                        <Setter TargetName="ReceiptProductGrid" Property="RowDefinitions" Value="Auto" />
+                        <Setter TargetName="ReceiptQuantityField" Property="Grid.Row" Value="0" />
+                        <Setter TargetName="ReceiptQuantityField" Property="Grid.Column" Value="1" />
+                        <Setter TargetName="ReceiptQuantityField" Property="Margin" Value="0" />
+                        <Setter TargetName="ReceiptLotCostGrid" Property="ColumnDefinitions" Value="*,*" />
+                        <Setter TargetName="ReceiptLotCostGrid" Property="RowDefinitions" Value="Auto" />
+                        <Setter TargetName="ReceiptCostField" Property="Grid.Row" Value="0" />
+                        <Setter TargetName="ReceiptCostField" Property="Grid.Column" Value="1" />
+                        <Setter TargetName="ReceiptCostField" Property="Margin" Value="0" />
+                        <Setter TargetName="ReceiptDateGrid" Property="ColumnDefinitions" Value="*,*" />
+                        <Setter TargetName="ReceiptDateGrid" Property="RowDefinitions" Value="Auto" />
+                        <Setter TargetName="ExpirationDateField" Property="Grid.Row" Value="0" />
+                        <Setter TargetName="ExpirationDateField" Property="Grid.Column" Value="1" />
+                        <Setter TargetName="ExpirationDateField" Property="Margin" Value="0" />
+
+                        <Setter TargetName="CancelOrderGrid" Property="ColumnDefinitions" Value="2*,Auto" />
+                        <Setter TargetName="CancelOrderGrid" Property="RowDefinitions" Value="Auto" />
+                        <Setter TargetName="CancelOrderButton" Property="Grid.Row" Value="0" />
+                        <Setter TargetName="CancelOrderButton" Property="Grid.Column" Value="1" />
+                        <Setter TargetName="CancelOrderButton" Property="Margin" Value="0" />
+                        <Setter TargetName="CancelOrderButton" Property="HorizontalOptions" Value="End" />
+
+                        <Setter TargetName="AddOrderLineButton" Property="HorizontalOptions" Value="Start" />
+                        <Setter TargetName="SaveOrderButton" Property="HorizontalOptions" Value="Start" />
+                        <Setter TargetName="CreateProductButton" Property="HorizontalOptions" Value="Start" />
+                        <Setter TargetName="ReceiveSelectedLineButton" Property="HorizontalOptions" Value="Start" />
+                    </VisualState.Setters>
+                </VisualState>
+
+                <VisualState x:Name="WideWindow">
+                    <VisualState.StateTriggers>
+                        <AdaptiveTrigger MinWindowWidth="1100" />
+                    </VisualState.StateTriggers>
+                    <VisualState.Setters>
+                        <Setter TargetName="PageRoot" Property="Padding" Value="32,24,32,0" />
+
+                        <Setter TargetName="OrderDetailsGrid" Property="ColumnDefinitions" Value="*,*" />
+                        <Setter TargetName="OrderDetailsGrid" Property="RowDefinitions" Value="Auto,Auto" />
+                        <Setter TargetName="ManualSupplierField" Property="Grid.Row" Value="0" />
+                        <Setter TargetName="ManualSupplierField" Property="Grid.Column" Value="1" />
+                        <Setter TargetName="ManualSupplierField" Property="Margin" Value="0" />
+                        <Setter TargetName="OrderDateField" Property="Grid.Row" Value="1" />
+                        <Setter TargetName="OrderDateField" Property="Grid.Column" Value="0" />
+                        <Setter TargetName="EstimatedDateField" Property="Grid.Row" Value="1" />
+                        <Setter TargetName="EstimatedDateField" Property="Grid.Column" Value="1" />
+
+                        <Setter TargetName="DescriptionUnitGrid" Property="ColumnDefinitions" Value="2*,*" />
+                        <Setter TargetName="DescriptionUnitGrid" Property="RowDefinitions" Value="Auto" />
+                        <Setter TargetName="UnitField" Property="Grid.Row" Value="0" />
+                        <Setter TargetName="UnitField" Property="Grid.Column" Value="1" />
+                        <Setter TargetName="UnitField" Property="Margin" Value="0" />
+                        <Setter TargetName="RequestedCostGrid" Property="ColumnDefinitions" Value="*,*" />
+                        <Setter TargetName="RequestedCostGrid" Property="RowDefinitions" Value="Auto" />
+                        <Setter TargetName="EstimatedCostField" Property="Grid.Row" Value="0" />
+                        <Setter TargetName="EstimatedCostField" Property="Grid.Column" Value="1" />
+                        <Setter TargetName="EstimatedCostField" Property="Margin" Value="0" />
+
+                        <Setter TargetName="OrderSummaryGrid" Property="ColumnDefinitions" Value="2*,*" />
+                        <Setter TargetName="OrderSummaryGrid" Property="RowDefinitions" Value="Auto" />
+                        <Setter TargetName="InitialStatusField" Property="Grid.Row" Value="0" />
+                        <Setter TargetName="InitialStatusField" Property="Grid.Column" Value="1" />
+                        <Setter TargetName="InitialStatusField" Property="Margin" Value="0" />
+
+                        <Setter TargetName="RegisteredHeaderGrid" Property="ColumnDefinitions" Value="*,Auto" />
+                        <Setter TargetName="RegisteredHeaderGrid" Property="RowDefinitions" Value="Auto" />
+                        <Setter TargetName="RefreshOrdersButton" Property="Grid.Row" Value="0" />
+                        <Setter TargetName="RefreshOrdersButton" Property="Grid.Column" Value="1" />
+                        <Setter TargetName="RefreshOrdersButton" Property="Margin" Value="0" />
+                        <Setter TargetName="RefreshOrdersButton" Property="HorizontalOptions" Value="End" />
+
+                        <Setter TargetName="SelectedHeaderGrid" Property="ColumnDefinitions" Value="*,Auto" />
+                        <Setter TargetName="SelectedHeaderGrid" Property="RowDefinitions" Value="Auto" />
+                        <Setter TargetName="ConfirmOrderButton" Property="Grid.Row" Value="0" />
+                        <Setter TargetName="ConfirmOrderButton" Property="Grid.Column" Value="1" />
+                        <Setter TargetName="ConfirmOrderButton" Property="Margin" Value="0" />
+                        <Setter TargetName="ConfirmOrderButton" Property="HorizontalOptions" Value="End" />
+
+                        <Setter TargetName="ReceiptProductGrid" Property="ColumnDefinitions" Value="*,*" />
+                        <Setter TargetName="ReceiptProductGrid" Property="RowDefinitions" Value="Auto" />
+                        <Setter TargetName="ReceiptQuantityField" Property="Grid.Row" Value="0" />
+                        <Setter TargetName="ReceiptQuantityField" Property="Grid.Column" Value="1" />
+                        <Setter TargetName="ReceiptQuantityField" Property="Margin" Value="0" />
+                        <Setter TargetName="ReceiptLotCostGrid" Property="ColumnDefinitions" Value="*,*" />
+                        <Setter TargetName="ReceiptLotCostGrid" Property="RowDefinitions" Value="Auto" />
+                        <Setter TargetName="ReceiptCostField" Property="Grid.Row" Value="0" />
+                        <Setter TargetName="ReceiptCostField" Property="Grid.Column" Value="1" />
+                        <Setter TargetName="ReceiptCostField" Property="Margin" Value="0" />
+                        <Setter TargetName="ReceiptDateGrid" Property="ColumnDefinitions" Value="*,*" />
+                        <Setter TargetName="ReceiptDateGrid" Property="RowDefinitions" Value="Auto" />
+                        <Setter TargetName="ExpirationDateField" Property="Grid.Row" Value="0" />
+                        <Setter TargetName="ExpirationDateField" Property="Grid.Column" Value="1" />
+                        <Setter TargetName="ExpirationDateField" Property="Margin" Value="0" />
+
+                        <Setter TargetName="CancelOrderGrid" Property="ColumnDefinitions" Value="2*,Auto" />
+                        <Setter TargetName="CancelOrderGrid" Property="RowDefinitions" Value="Auto" />
+                        <Setter TargetName="CancelOrderButton" Property="Grid.Row" Value="0" />
+                        <Setter TargetName="CancelOrderButton" Property="Grid.Column" Value="1" />
+                        <Setter TargetName="CancelOrderButton" Property="Margin" Value="0" />
+                        <Setter TargetName="CancelOrderButton" Property="HorizontalOptions" Value="End" />
+
+                        <Setter TargetName="AddOrderLineButton" Property="HorizontalOptions" Value="Start" />
+                        <Setter TargetName="SaveOrderButton" Property="HorizontalOptions" Value="Start" />
+                        <Setter TargetName="CreateProductButton" Property="HorizontalOptions" Value="Start" />
+                        <Setter TargetName="ReceiveSelectedLineButton" Property="HorizontalOptions" Value="Start" />
+                    </VisualState.Setters>
+                </VisualState>
+            </VisualStateGroup>
+        </VisualStateManager.VisualStateGroups>
+
+        <VerticalStackLayout Grid.Row="0"
+                             Spacing="4"
+                             Margin="0,0,0,18"
+                             MaximumWidthRequest="1080"
+                             HorizontalOptions="Fill">
+            <Label Text="Pedidos y recepciones"
+                   Style="{StaticResource DesktopPageTitle}"
+                   SemanticProperties.HeadingLevel="Level1" />
+            <Label Text="Registra solicitudes y confirma la mercancía cuando llegue."
+                   Style="{StaticResource DesktopPageSubtitle}" />
+        </VerticalStackLayout>
+
+        <ScrollView x:Name="PageScroll"
+                    Grid.Row="1"
+                    VerticalScrollBarVisibility="Default">
+            <VerticalStackLayout Spacing="20"
+                                 Padding="0,0,0,28"
+                                 MaximumWidthRequest="1080"
+                                 HorizontalOptions="Fill"
+                                 VerticalOptions="Start">
+                <Border Style="{StaticResource Card}">
+                    <VerticalStackLayout Spacing="16" VerticalOptions="Start">
+                        <Label Text="Nuevo pedido" Style="{StaticResource SectionTitle}" />
+                        <Grid x:Name="OrderDetailsGrid"
+                              ColumnDefinitions="*,*"
+                              RowDefinitions="Auto,Auto"
+                              ColumnSpacing="18">
+                            <VerticalStackLayout Spacing="4">
+                                <Label Text="Proveedor registrado (opcional)" Style="{StaticResource FieldLabel}" />
+                                <Picker x:Name="SupplierPicker"
+                                        Style="{StaticResource FormPicker}"
+                                        Title="Selecciona un proveedor" />
+                            </VerticalStackLayout>
+                            <VerticalStackLayout x:Name="ManualSupplierField"
+                                                 Grid.Column="1"
+                                                 Spacing="4">
+                                <Label Text="Referencia manual del proveedor *" Style="{StaticResource FieldLabel}" />
+                                <Entry x:Name="ManualSupplierEntry" Style="{StaticResource FormEntry}" />
+                                <Label Text="Úsala cuando el proveedor no esté registrado; si seleccionaste uno, puede quedar vacía."
+                                       Style="{StaticResource HelperText}"
+                                       LineBreakMode="WordWrap" />
+                            </VerticalStackLayout>
+                            <VerticalStackLayout x:Name="OrderDateField"
+                                                 Grid.Row="1"
+                                                 Margin="0,12,0,0"
+                                                 Spacing="4">
+                                <Label Text="Fecha del pedido *" Style="{StaticResource FieldLabel}" />
+                                <DatePicker x:Name="OrderDatePicker" Style="{StaticResource FormDatePicker}" />
+                            </VerticalStackLayout>
+                            <VerticalStackLayout x:Name="EstimatedDateField"
+                                                 Grid.Row="1"
+                                                 Grid.Column="1"
+                                                 Margin="0,12,0,0"
+                                                 Spacing="4">
+                                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                                    <CheckBox x:Name="HasEstimatedDateCheck"
+                                              CheckedChanged="HasEstimatedDateCheck_Changed" />
+                                    <Label Grid.Column="1"
+                                           Text="Con fecha estimada de llegada"
+                                           VerticalOptions="Center"
+                                           Style="{StaticResource FieldLabel}" />
+                                </Grid>
+                                <DatePicker x:Name="EstimatedDatePicker"
+                                            IsVisible="False"
+                                            Style="{StaticResource FormDatePicker}" />
+                            </VerticalStackLayout>
+                        </Grid>
+
+                        <Border Style="{StaticResource FormSection}">
+                            <VerticalStackLayout Spacing="14" VerticalOptions="Start">
+                                <Label Text="Agregar concepto" Style="{StaticResource SectionTitle}" />
+                                <VerticalStackLayout Spacing="4">
+                                    <Label Text="Código de barras o SKU (opcional)" Style="{StaticResource FieldLabel}" />
+                                    <Entry x:Name="ProductCodeEntry"
+                                           Style="{StaticResource FormEntry}"
+                                           Completed="AddOrderLine_Clicked" />
+                                    <Button Text="Escanear con cámara"
+                                            Style="{StaticResource SecondaryButton}"
+                                            HorizontalOptions="Start"
+                                            Clicked="ScanOrderLineCamera_Clicked" />
+                                </VerticalStackLayout>
+                                <Grid x:Name="DescriptionUnitGrid"
+                                      ColumnDefinitions="2*,*"
+                                      RowDefinitions="Auto"
+                                      ColumnSpacing="18">
+                                    <VerticalStackLayout Spacing="4">
+                                        <Label Text="Descripción *" Style="{StaticResource FieldLabel}" />
+                                        <Entry x:Name="DescriptionEntry" Style="{StaticResource FormEntry}" />
+                                    </VerticalStackLayout>
+                                    <VerticalStackLayout x:Name="UnitField"
+                                                         Grid.Column="1"
+                                                         Spacing="4">
+                                        <Label Text="Unidad de medida *" Style="{StaticResource FieldLabel}" />
+                                        <Picker x:Name="UnitPicker" Style="{StaticResource FormPicker}">
+                                            <Picker.Items>
+                                                <x:String>Unidad</x:String>
+                                                <x:String>Kilogramo</x:String>
+                                                <x:String>Litro</x:String>
+                                            </Picker.Items>
+                                        </Picker>
+                                    </VerticalStackLayout>
+                                </Grid>
+                                <Grid x:Name="RequestedCostGrid"
+                                      ColumnDefinitions="*,*"
+                                      RowDefinitions="Auto"
+                                      ColumnSpacing="18">
+                                    <VerticalStackLayout Spacing="4">
+                                        <Label Text="Cantidad solicitada *" Style="{StaticResource FieldLabel}" />
+                                        <Entry x:Name="RequestedQuantityEntry"
+                                               Style="{StaticResource FormEntry}"
+                                               Keyboard="Numeric" />
+                                    </VerticalStackLayout>
+                                    <VerticalStackLayout x:Name="EstimatedCostField"
+                                                         Grid.Column="1"
+                                                         Spacing="4">
+                                        <Label Text="Costo estimado unitario (opcional)" Style="{StaticResource FieldLabel}" />
+                                        <Entry x:Name="EstimatedCostEntry"
+                                               Style="{StaticResource FormEntry}"
+                                               Keyboard="Numeric" />
+                                    </VerticalStackLayout>
+                                </Grid>
+                                <VerticalStackLayout Spacing="4">
+                                    <Label Text="Notas del concepto (opcional)" Style="{StaticResource FieldLabel}" />
+                                    <Entry x:Name="LineNotesEntry" Style="{StaticResource FormEntry}" />
+                                </VerticalStackLayout>
+                                <Button x:Name="AddOrderLineButton"
+                                        Text="Agregar concepto al pedido"
+                                        Style="{StaticResource SecondaryButton}"
+                                        HorizontalOptions="Start"
+                                        Clicked="AddOrderLine_Clicked" />
+                                <Label x:Name="LineErrorLabel" Style="{StaticResource ErrorText}" />
+                            </VerticalStackLayout>
+                        </Border>
+
+                        <CollectionView x:Name="DraftLinesList"
+                                        MinimumHeightRequest="64"
+                                        ItemSizingStrategy="MeasureAllItems"
+                                        VerticalOptions="Start"
+                                        VerticalScrollBarVisibility="Never">
+                            <CollectionView.EmptyView>
+                                <Label Text="Todavía no has agregado conceptos."
+                                       Margin="0,12"
+                                       Style="{StaticResource HelperText}" />
+                            </CollectionView.EmptyView>
+                            <CollectionView.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Style="{StaticResource ListRow}" Margin="0,4">
+                                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                                            <VerticalStackLayout Spacing="2">
+                                                <Label Text="{Binding Description}"
+                                                       FontAttributes="Bold"
+                                                       LineBreakMode="WordWrap" />
+                                                <Label Text="{Binding DisplayDetail}"
+                                                       Style="{StaticResource HelperText}"
+                                                       LineBreakMode="WordWrap" />
+                                            </VerticalStackLayout>
+                                            <Button Grid.Column="1"
+                                                    Text="Quitar"
+                                                    Style="{StaticResource SecondaryButton}"
+                                                    Clicked="RemoveOrderLine_Clicked"
+                                                    CommandParameter="{Binding .}" />
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </CollectionView.ItemTemplate>
+                        </CollectionView>
+
+                        <Grid x:Name="OrderSummaryGrid"
+                              ColumnDefinitions="2*,*"
+                              RowDefinitions="Auto"
+                              ColumnSpacing="18">
+                            <VerticalStackLayout Spacing="4">
+                                <Label Text="Notas del pedido (opcional)" Style="{StaticResource FieldLabel}" />
+                                <Editor x:Name="OrderNotesEntry"
+                                        Style="{StaticResource FormEditor}"
+                                        AutoSize="TextChanges" />
+                            </VerticalStackLayout>
+                            <VerticalStackLayout x:Name="InitialStatusField"
+                                                 Grid.Column="1"
+                                                 Spacing="4">
+                                <Label Text="Estado inicial *" Style="{StaticResource FieldLabel}" />
+                                <Picker x:Name="InitialStatusPicker" Style="{StaticResource FormPicker}">
+                                    <Picker.Items>
+                                        <x:String>Pendiente</x:String>
+                                        <x:String>Borrador</x:String>
+                                    </Picker.Items>
+                                </Picker>
+                                <Label x:Name="DraftTotalLabel"
+                                       Text="Total estimado: $0.00"
+                                       FontAttributes="Bold" />
+                            </VerticalStackLayout>
+                        </Grid>
+                        <Button x:Name="SaveOrderButton"
+                                Text="Guardar pedido"
+                                Style="{StaticResource PrimaryButton}"
+                                HorizontalOptions="Start"
+                                Clicked="SaveOrder_Clicked" />
+                        <Label x:Name="OrderResultLabel" Style="{StaticResource InfoText}" />
+                    </VerticalStackLayout>
+                </Border>
+
+                <Border Style="{StaticResource Card}">
+                    <VerticalStackLayout Spacing="14" VerticalOptions="Start">
+                        <Grid x:Name="RegisteredHeaderGrid"
+                              ColumnDefinitions="*,Auto"
+                              RowDefinitions="Auto">
+                            <VerticalStackLayout Spacing="2">
+                                <Label Text="Pedidos registrados" Style="{StaticResource SectionTitle}" />
+                                <Label Text="Selecciona un pedido para confirmarlo, cancelarlo o registrar una llegada."
+                                       Style="{StaticResource HelperText}"
+                                       LineBreakMode="WordWrap" />
+                            </VerticalStackLayout>
+                            <Button x:Name="RefreshOrdersButton"
+                                    Grid.Column="1"
+                                    Text="Actualizar"
+                                    Style="{StaticResource SecondaryButton}"
+                                    Clicked="RefreshOrders_Clicked" />
+                        </Grid>
+                        <CollectionView x:Name="OrdersList"
+                                        MinimumHeightRequest="64"
+                                        ItemSizingStrategy="MeasureAllItems"
+                                        VerticalOptions="Start"
+                                        VerticalScrollBarVisibility="Never"
+                                        SelectionMode="Single"
+                                        SelectionChanged="OrdersList_SelectionChanged">
+                            <CollectionView.EmptyView>
+                                <Label Text="No hay pedidos registrados."
+                                       Margin="0,12"
+                                       Style="{StaticResource HelperText}" />
+                            </CollectionView.EmptyView>
+                            <CollectionView.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Style="{StaticResource ListRow}" Margin="0,4">
+                                        <Grid ColumnDefinitions="*,Auto"
+                                              RowDefinitions="Auto,Auto,Auto"
+                                              ColumnSpacing="12"
+                                              RowSpacing="2">
+                                            <Label Text="{Binding Folio}" FontAttributes="Bold" />
+                                            <Label Grid.Column="1"
+                                                   Text="{Binding DisplayTotal}"
+                                                   FontAttributes="Bold"
+                                                   HorizontalTextAlignment="End" />
+                                            <Label Grid.Row="1"
+                                                   Grid.ColumnSpan="2"
+                                                   Text="{Binding DisplaySupplier}"
+                                                   Style="{StaticResource HelperText}"
+                                                   LineBreakMode="WordWrap" />
+                                            <Label Grid.Row="2"
+                                                   Text="{Binding DisplayStatus}"
+                                                   FontAttributes="Bold" />
+                                            <Label Grid.Row="2"
+                                                   Grid.Column="1"
+                                                   Text="{Binding DisplayDate}"
+                                                   Style="{StaticResource HelperText}"
+                                                   HorizontalTextAlignment="End" />
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </CollectionView.ItemTemplate>
+                        </CollectionView>
+                    </VerticalStackLayout>
+                </Border>
+
+                <Border x:Name="SelectedOrderPanel"
+                        Style="{StaticResource Card}"
+                        IsVisible="False">
+                    <VerticalStackLayout Spacing="14" VerticalOptions="Start">
+                        <Grid x:Name="SelectedHeaderGrid"
+                              ColumnDefinitions="*,Auto"
+                              RowDefinitions="Auto">
+                            <VerticalStackLayout Spacing="2">
+                                <Label x:Name="SelectedOrderTitle" Style="{StaticResource SectionTitle}" />
+                                <Label x:Name="SelectedOrderSubtitle"
+                                       Style="{StaticResource DesktopPageSubtitle}"
+                                       LineBreakMode="WordWrap" />
+                            </VerticalStackLayout>
+                            <Button x:Name="ConfirmOrderButton"
+                                    Grid.Column="1"
+                                    Text="Confirmar pedido"
+                                    Style="{StaticResource PrimaryButton}"
+                                    Clicked="ConfirmOrder_Clicked" />
+                        </Grid>
+                        <CollectionView x:Name="OrderLinesList"
+                                        MinimumHeightRequest="64"
+                                        ItemSizingStrategy="MeasureAllItems"
+                                        VerticalOptions="Start"
+                                        VerticalScrollBarVisibility="Never"
+                                        SelectionMode="Single"
+                                        SelectionChanged="OrderLinesList_SelectionChanged">
+                            <CollectionView.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Style="{StaticResource ListRow}" Margin="0,4">
+                                        <VerticalStackLayout Spacing="2">
+                                            <Label Text="{Binding Description}"
+                                                   FontAttributes="Bold"
+                                                   LineBreakMode="WordWrap" />
+                                            <Label Text="{Binding DisplayQuantity}"
+                                                   Style="{StaticResource HelperText}" />
+                                        </VerticalStackLayout>
+                                    </Border>
+                                </DataTemplate>
+                            </CollectionView.ItemTemplate>
+                        </CollectionView>
+
+                        <Border x:Name="ReceiptPanel"
+                                Style="{StaticResource AlertCard}"
+                                IsVisible="False">
+                            <VerticalStackLayout Spacing="14" VerticalOptions="Start">
+                                <Label Text="Registrar recepción del concepto seleccionado"
+                                       Style="{StaticResource SectionTitle}"
+                                       LineBreakMode="WordWrap" />
+                                <Label x:Name="ReceiptLineTitle"
+                                       FontAttributes="Bold"
+                                       LineBreakMode="WordWrap" />
+                                <Grid x:Name="ReceiptProductGrid"
+                                      ColumnDefinitions="*,*"
+                                      RowDefinitions="Auto"
+                                      ColumnSpacing="18">
+                                    <VerticalStackLayout Spacing="4">
+                                        <Label Text="Producto destino: código o SKU *" Style="{StaticResource FieldLabel}" />
+                                        <Entry x:Name="ReceiptProductCodeEntry" Style="{StaticResource FormEntry}" />
+                                        <Button Text="Escanear con cámara"
+                                                Style="{StaticResource SecondaryButton}"
+                                                HorizontalOptions="Start"
+                                                Clicked="ScanReceiptCamera_Clicked" />
+                                        <Button x:Name="CreateProductButton"
+                                                Text="Crear producto nuevo"
+                                                Style="{StaticResource SecondaryButton}"
+                                                HorizontalOptions="Start"
+                                                Clicked="CreateProductForReceipt_Clicked" />
+                                    </VerticalStackLayout>
+                                    <VerticalStackLayout x:Name="ReceiptQuantityField"
+                                                         Grid.Column="1"
+                                                         Spacing="4">
+                                        <Label Text="Cantidad recibida *" Style="{StaticResource FieldLabel}" />
+                                        <Entry x:Name="ReceiptQuantityEntry"
+                                               Style="{StaticResource FormEntry}"
+                                               Keyboard="Numeric" />
+                                    </VerticalStackLayout>
+                                </Grid>
+                                <Grid x:Name="ReceiptLotCostGrid"
+                                      ColumnDefinitions="*,*"
+                                      RowDefinitions="Auto"
+                                      ColumnSpacing="18">
+                                    <VerticalStackLayout Spacing="4">
+                                        <Label Text="Código de lote (opcional)" Style="{StaticResource FieldLabel}" />
+                                        <Entry x:Name="ReceiptLotCodeEntry" Style="{StaticResource FormEntry}" />
+                                    </VerticalStackLayout>
+                                    <VerticalStackLayout x:Name="ReceiptCostField"
+                                                         Grid.Column="1"
+                                                         Spacing="4">
+                                        <Label Text="Costo unitario (opcional)" Style="{StaticResource FieldLabel}" />
+                                        <Entry x:Name="ReceiptCostEntry"
+                                               Style="{StaticResource FormEntry}"
+                                               Keyboard="Numeric" />
+                                    </VerticalStackLayout>
+                                </Grid>
+                                <Grid x:Name="ReceiptDateGrid"
+                                      ColumnDefinitions="*,*"
+                                      RowDefinitions="Auto"
+                                      ColumnSpacing="18">
+                                    <VerticalStackLayout VerticalOptions="Start">
+                                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                                            <CheckBox x:Name="HasManufacturingDateCheck"
+                                                      CheckedChanged="HasManufacturingDateCheck_Changed" />
+                                            <Label Grid.Column="1"
+                                                   Text="Registrar fecha de fabricación"
+                                                   VerticalOptions="Center"
+                                                   Style="{StaticResource FieldLabel}" />
+                                        </Grid>
+                                        <DatePicker x:Name="ManufacturingDatePicker"
+                                                    IsVisible="False"
+                                                    Style="{StaticResource FormDatePicker}" />
+                                    </VerticalStackLayout>
+                                    <VerticalStackLayout x:Name="ExpirationDateField"
+                                                         Grid.Column="1"
+                                                         VerticalOptions="Start">
+                                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                                            <CheckBox x:Name="HasExpirationDateCheck"
+                                                      CheckedChanged="HasExpirationDateCheck_Changed" />
+                                            <Label Grid.Column="1"
+                                                   Text="Registrar fecha de caducidad"
+                                                   VerticalOptions="Center"
+                                                   Style="{StaticResource FieldLabel}" />
+                                        </Grid>
+                                        <DatePicker x:Name="ReceiptExpirationDatePicker"
+                                                    IsVisible="False"
+                                                    Style="{StaticResource FormDatePicker}" />
+                                    </VerticalStackLayout>
+                                </Grid>
+                                <VerticalStackLayout Spacing="4">
+                                    <Label Text="Notas de recepción (opcional)" Style="{StaticResource FieldLabel}" />
+                                    <Entry x:Name="ReceiptNotesEntry" Style="{StaticResource FormEntry}" />
+                                </VerticalStackLayout>
+                                <Button x:Name="ReceiveSelectedLineButton"
+                                        Text="Confirmar recepción"
+                                        Style="{StaticResource PrimaryButton}"
+                                        HorizontalOptions="Start"
+                                        Clicked="ReceiveSelectedLine_Clicked" />
+                                <Label x:Name="ReceiptResultLabel" Style="{StaticResource ErrorText}" />
+                            </VerticalStackLayout>
+                        </Border>
+
+                        <Grid x:Name="CancelOrderGrid"
+                              ColumnDefinitions="2*,Auto"
+                              RowDefinitions="Auto"
+                              ColumnSpacing="12">
+                            <VerticalStackLayout Spacing="4">
+                                <Label Text="Motivo de cancelación *" Style="{StaticResource FieldLabel}" />
+                                <Entry x:Name="CancelReasonEntry" Style="{StaticResource FormEntry}" />
+                            </VerticalStackLayout>
+                            <Button x:Name="CancelOrderButton"
+                                    Grid.Column="1"
+                                    Text="Cancelar pedido"
+                                    Style="{StaticResource DangerButton}"
+                                    VerticalOptions="End"
+                                    Clicked="CancelOrder_Clicked" />
+                        </Grid>
+                    </VerticalStackLayout>
+                </Border>
+            </VerticalStackLayout>
+        </ScrollView>
+    </Grid>
+</ContentPage>

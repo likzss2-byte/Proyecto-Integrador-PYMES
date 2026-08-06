@@ -2,11 +2,217 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="InventorySystem.AppPages.NewOrderPage"
->
-    <VerticalStackLayout>
-        <Label 
-            Text="Welcome to .NET MAUI!"
-            VerticalOptions="Center" 
-            HorizontalOptions="Center" />
-    </VerticalStackLayout>
+             Title="Nueva entrada">
+    <Shell.TitleView>
+        <Grid />
+    </Shell.TitleView>
+    <Grid x:Name="PageRoot"
+          RowDefinitions="Auto,*"
+          Padding="32,24,32,0">
+        <VisualStateManager.VisualStateGroups>
+            <VisualStateGroup x:Name="WindowWidthStates">
+                <VisualState x:Name="SmallWindow">
+                    <VisualState.StateTriggers>
+                        <AdaptiveTrigger MinWindowWidth="0" />
+                    </VisualState.StateTriggers>
+                    <VisualState.Setters>
+                        <Setter TargetName="PageRoot" Property="Padding" Value="16,16,16,0" />
+                        <Setter TargetName="QuantityCostGrid" Property="ColumnDefinitions" Value="*" />
+                        <Setter TargetName="QuantityCostGrid" Property="RowDefinitions" Value="Auto,Auto" />
+                        <Setter TargetName="UnitCostField" Property="Grid.Row" Value="1" />
+                        <Setter TargetName="UnitCostField" Property="Grid.Column" Value="0" />
+                        <Setter TargetName="UnitCostField" Property="Margin" Value="0,12,0,0" />
+                        <Setter TargetName="AddProductButton" Property="HorizontalOptions" Value="Fill" />
+                        <Setter TargetName="ConfirmEntryButton" Property="HorizontalOptions" Value="Fill" />
+                        <Setter TargetName="CancelEntryButton" Property="HorizontalOptions" Value="Fill" />
+                    </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="MediumWindow">
+                    <VisualState.StateTriggers>
+                        <AdaptiveTrigger MinWindowWidth="700" />
+                    </VisualState.StateTriggers>
+                    <VisualState.Setters>
+                        <Setter TargetName="PageRoot" Property="Padding" Value="24,20,24,0" />
+                        <Setter TargetName="QuantityCostGrid" Property="ColumnDefinitions" Value="*,*" />
+                        <Setter TargetName="QuantityCostGrid" Property="RowDefinitions" Value="Auto" />
+                        <Setter TargetName="UnitCostField" Property="Grid.Row" Value="0" />
+                        <Setter TargetName="UnitCostField" Property="Grid.Column" Value="1" />
+                        <Setter TargetName="UnitCostField" Property="Margin" Value="0" />
+                        <Setter TargetName="AddProductButton" Property="HorizontalOptions" Value="Start" />
+                        <Setter TargetName="ConfirmEntryButton" Property="HorizontalOptions" Value="Start" />
+                        <Setter TargetName="CancelEntryButton" Property="HorizontalOptions" Value="Start" />
+                    </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="WideWindow">
+                    <VisualState.StateTriggers>
+                        <AdaptiveTrigger MinWindowWidth="1050" />
+                    </VisualState.StateTriggers>
+                    <VisualState.Setters>
+                        <Setter TargetName="PageRoot" Property="Padding" Value="32,24,32,0" />
+                        <Setter TargetName="QuantityCostGrid" Property="ColumnDefinitions" Value="*,*" />
+                        <Setter TargetName="QuantityCostGrid" Property="RowDefinitions" Value="Auto" />
+                        <Setter TargetName="UnitCostField" Property="Grid.Row" Value="0" />
+                        <Setter TargetName="UnitCostField" Property="Grid.Column" Value="1" />
+                        <Setter TargetName="UnitCostField" Property="Margin" Value="0" />
+                        <Setter TargetName="AddProductButton" Property="HorizontalOptions" Value="Start" />
+                        <Setter TargetName="ConfirmEntryButton" Property="HorizontalOptions" Value="Start" />
+                        <Setter TargetName="CancelEntryButton" Property="HorizontalOptions" Value="Start" />
+                    </VisualState.Setters>
+                </VisualState>
+            </VisualStateGroup>
+        </VisualStateManager.VisualStateGroups>
+
+        <VerticalStackLayout Grid.Row="0"
+                             Spacing="4"
+                             Margin="0,0,0,18"
+                             MaximumWidthRequest="1040"
+                             HorizontalOptions="Fill">
+            <Label Text="Nueva entrada"
+                   Style="{StaticResource DesktopPageTitle}"
+                   SemanticProperties.HeadingLevel="Level1" />
+            <Label Text="Registra mercancía que ya llegó al almacén."
+                   Style="{StaticResource DesktopPageSubtitle}" />
+        </VerticalStackLayout>
+
+        <ScrollView x:Name="PageScroll"
+                    Grid.Row="1"
+                    VerticalScrollBarVisibility="Default">
+            <VerticalStackLayout Spacing="20"
+                                 Padding="0,0,0,28"
+                                 MaximumWidthRequest="1040"
+                                 HorizontalOptions="Fill"
+                                 VerticalOptions="Start">
+                <Border Style="{StaticResource Card}">
+                    <VerticalStackLayout Spacing="16" VerticalOptions="Start">
+                        <VerticalStackLayout Spacing="4">
+                            <Label Text="Proveedor (opcional)" Style="{StaticResource FieldLabel}" />
+                            <Picker x:Name="SupplierPicker"
+                                    Style="{StaticResource FormPicker}"
+                                    Title="Selecciona un proveedor" />
+                        </VerticalStackLayout>
+
+                        <Border Style="{StaticResource FormSection}">
+                            <VerticalStackLayout Spacing="14" VerticalOptions="Start">
+                                <Label Text="Agregar producto y lote" Style="{StaticResource SectionTitle}" />
+                                <VerticalStackLayout Spacing="4">
+                                    <Label Text="Código de barras o SKU *" Style="{StaticResource FieldLabel}" />
+                                    <Entry x:Name="ProductCodeEntry"
+                                           Style="{StaticResource FormEntry}"
+                                           Completed="AddLine_Clicked" />
+                                    <Button Text="Escanear con cámara"
+                                            Style="{StaticResource SecondaryButton}"
+                                            HorizontalOptions="Start"
+                                            Clicked="ScanCamera_Clicked" />
+                                </VerticalStackLayout>
+                                <Grid x:Name="QuantityCostGrid"
+                                      ColumnDefinitions="*,*"
+                                      RowDefinitions="Auto"
+                                      ColumnSpacing="18">
+                                    <VerticalStackLayout Spacing="4">
+                                        <Label Text="Cantidad *" Style="{StaticResource FieldLabel}" />
+                                        <Entry x:Name="QuantityEntry"
+                                               Style="{StaticResource FormEntry}"
+                                               Keyboard="Numeric" />
+                                    </VerticalStackLayout>
+                                    <VerticalStackLayout x:Name="UnitCostField"
+                                                         Grid.Column="1"
+                                                         Spacing="4">
+                                        <Label Text="Costo unitario *" Style="{StaticResource FieldLabel}" />
+                                        <Entry x:Name="UnitCostEntry"
+                                               Style="{StaticResource FormEntry}"
+                                               Keyboard="Numeric" />
+                                    </VerticalStackLayout>
+                                </Grid>
+                                <VerticalStackLayout Spacing="4">
+                                    <Label Text="Código de lote (opcional)" Style="{StaticResource FieldLabel}" />
+                                    <Entry x:Name="LotCodeEntry" Style="{StaticResource FormEntry}" />
+                                </VerticalStackLayout>
+                                <VerticalStackLayout Spacing="4" VerticalOptions="Start">
+                                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                                        <CheckBox x:Name="HasExpirationDateCheck"
+                                                  CheckedChanged="HasExpirationDateCheck_Changed" />
+                                        <Label Grid.Column="1"
+                                               Text="Registrar caducidad"
+                                               VerticalOptions="Center"
+                                               Style="{StaticResource FieldLabel}" />
+                                    </Grid>
+                                    <DatePicker x:Name="ExpirationDatePicker"
+                                                IsVisible="False"
+                                                Style="{StaticResource FormDatePicker}" />
+                                </VerticalStackLayout>
+                                <Button x:Name="AddProductButton"
+                                        Text="Agregar producto"
+                                        Style="{StaticResource SecondaryButton}"
+                                        HorizontalOptions="Start"
+                                        Clicked="AddLine_Clicked" />
+                                <Label x:Name="ResultLabel" Style="{StaticResource ErrorText}" />
+                            </VerticalStackLayout>
+                        </Border>
+
+                        <CollectionView x:Name="LineList"
+                                        MinimumHeightRequest="64"
+                                        ItemSizingStrategy="MeasureAllItems"
+                                        VerticalOptions="Start"
+                                        VerticalScrollBarVisibility="Never">
+                            <CollectionView.EmptyView>
+                                <Label Text="La entrada todavía no contiene productos."
+                                       Margin="0,12"
+                                       Style="{StaticResource HelperText}" />
+                            </CollectionView.EmptyView>
+                            <CollectionView.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Style="{StaticResource ListRow}" Margin="0,4">
+                                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                                            <VerticalStackLayout Spacing="2">
+                                                <Label Text="{Binding DisplayName}"
+                                                       FontAttributes="Bold"
+                                                       LineBreakMode="WordWrap" />
+                                                <Label Text="{Binding DisplayDetail}"
+                                                       Style="{StaticResource HelperText}"
+                                                       LineBreakMode="WordWrap" />
+                                            </VerticalStackLayout>
+                                            <Button Grid.Column="1"
+                                                    Text="Quitar"
+                                                    Style="{StaticResource SecondaryButton}"
+                                                    Clicked="RemoveLine_Clicked"
+                                                    CommandParameter="{Binding .}" />
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </CollectionView.ItemTemplate>
+                        </CollectionView>
+
+                        <Label x:Name="TotalLabel"
+                               Text="Total: $0.00"
+                               FontSize="18"
+                               FontAttributes="Bold" />
+                        <VerticalStackLayout Spacing="4">
+                            <Label Text="Notas (opcional)" Style="{StaticResource FieldLabel}" />
+                            <Editor x:Name="NotesEntry"
+                                    Style="{StaticResource FormEditor}"
+                                    AutoSize="TextChanges" />
+                        </VerticalStackLayout>
+                        <Button x:Name="ConfirmEntryButton"
+                                Text="Confirmar entrada"
+                                Style="{StaticResource PrimaryButton}"
+                                HorizontalOptions="Start"
+                                Clicked="ConfirmEntry_Clicked" />
+                        <Border x:Name="CancellationPanel"
+                                Style="{StaticResource ExpiredCard}"
+                                IsVisible="False">
+                            <VerticalStackLayout Spacing="10" VerticalOptions="Start">
+                                <Label Text="Motivo de cancelación *" Style="{StaticResource FieldLabel}" />
+                                <Entry x:Name="CancelReasonEntry" Style="{StaticResource FormEntry}" />
+                                <Button x:Name="CancelEntryButton"
+                                        Text="Cancelar última entrada"
+                                        Style="{StaticResource DangerButton}"
+                                        HorizontalOptions="Start"
+                                        Clicked="CancelEntry_Clicked" />
+                            </VerticalStackLayout>
+                        </Border>
+                    </VerticalStackLayout>
+                </Border>
+            </VerticalStackLayout>
+        </ScrollView>
+    </Grid>
 </ContentPage>
