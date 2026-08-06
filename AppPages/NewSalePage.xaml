@@ -14,6 +14,10 @@
                     <Label Text="Agregar producto" Style="{StaticResource SectionTitle}" />
                     <Label Text="Código de barras o SKU *" Style="{StaticResource FieldLabel}" />
                     <Entry x:Name="ProductCodeEntry" Style="{StaticResource FormEntry}" Completed="AddLine_Clicked" />
+                    <Button Text="Escanear con cámara"
+                            Style="{StaticResource SecondaryButton}"
+                            HorizontalOptions="Start"
+                            Clicked="ScanCamera_Clicked" />
                     <Grid ColumnDefinitions="*,*" ColumnSpacing="18">
                         <VerticalStackLayout Spacing="4">
                             <Label Text="Cantidad *" Style="{StaticResource FieldLabel}" />

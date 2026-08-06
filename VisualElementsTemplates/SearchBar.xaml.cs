@@ -11,6 +11,11 @@ public partial class SearchBar : ContentView
 
 	public string Text => InventorySearchBar.Text ?? string.Empty;
 
+	public void SetText(string value)
+	{
+		InventorySearchBar.Text = value;
+	}
+
 	private void InventorySearchBar_TextChanged(object? sender, TextChangedEventArgs e)
 	{
 		SearchTextChanged?.Invoke(this, e);

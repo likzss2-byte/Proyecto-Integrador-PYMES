@@ -9,17 +9,11 @@
     FlyoutBehavior="Flyout">
 
     <Shell.FlyoutHeader>
-        <Grid Padding="16,18,16,8" ColumnDefinitions="*,Auto">
+        <Grid Padding="24,24,24,16">
             <VerticalStackLayout Spacing="2">
                 <Label Text="Inventario PYMES" FontSize="18" FontAttributes="Bold" />
                 <Label Text="Navegación" FontSize="12" Opacity="0.7" />
             </VerticalStackLayout>
-            <Button x:Name="ToggleDesktopFlyoutButton"
-                    Grid.Column="1"
-                    Text="Contraer"
-                    Style="{StaticResource SecondaryButton}"
-                    IsVisible="{OnPlatform WinUI=True, Default=False}"
-                    Clicked="ToggleDesktopFlyout_Clicked" />
         </Grid>
     </Shell.FlyoutHeader>
 

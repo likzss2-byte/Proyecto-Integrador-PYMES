@@ -2,6 +2,7 @@ using System.Globalization;
 using InventorySystem.Domain;
 using InventorySystem.Infrastructure.Repositories;
 using InventorySystem.Infrastructure.Services;
+using InventorySystem.Services;
 
 namespace InventorySystem.AppPages;
 
@@ -10,6 +11,7 @@ public partial class NewItemPage : ContentPage
     private readonly ProductRepository _products;
     private readonly ProductLookupService _lookup;
     private readonly BarcodeScannerService _scanner;
+    private readonly BarcodeScannerCoordinator _cameraScanner;
     private readonly BarcodeReadGuard _readGuard;
     private readonly BusinessService _businesses;
     private long _businessId;
@@ -18,6 +20,7 @@ public partial class NewItemPage : ContentPage
         ProductRepository products,
         ProductLookupService lookup,
         BarcodeScannerService scanner,
+        BarcodeScannerCoordinator cameraScanner,
         BarcodeReadGuard readGuard,
         BusinessService businesses)
     {
@@ -25,6 +28,7 @@ public partial class NewItemPage : ContentPage
         _products = products;
         _lookup = lookup;
         _scanner = scanner;
+        _cameraScanner = cameraScanner;
         _readGuard = readGuard;
         _businesses = businesses;
         UnitPicker.SelectedIndex = 0;
@@ -48,6 +52,20 @@ public partial class NewItemPage : ContentPage
     private async void LookupCode_Clicked(object? sender, EventArgs e) => await LookupAsync(LookupCode.Text);
 
     private async void LookupCode_Completed(object? sender, EventArgs e) => await LookupAsync(LookupCode.Text);
+
+    private async void ScanCamera_Clicked(object? sender, EventArgs e)
+    {
+        var result = await _cameraScanner.ScanAsync("registro-producto", "Escanear producto");
+        if (!result.Success || string.IsNullOrWhiteSpace(result.Code))
+        {
+            LookupMessage.Text = "Puedes escribir el código manualmente.";
+            LookupCode.Focus();
+            return;
+        }
+
+        LookupCode.Text = result.Code;
+        await LookupAsync(result.Code);
+    }
 
     private async void ReadImage_Clicked(object? sender, EventArgs e)
     {

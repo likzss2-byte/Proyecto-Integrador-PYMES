@@ -3,6 +3,7 @@ using System.Globalization;
 using InventorySystem.Domain;
 using InventorySystem.Infrastructure.Repositories;
 using InventorySystem.Infrastructure.Services;
+using InventorySystem.Services;
 
 namespace InventorySystem.AppPages;
 
@@ -12,6 +13,7 @@ public partial class NewSalePage : ContentPage
     private readonly InventoryTransactionService _transactions;
     private readonly BusinessService _businesses;
     private readonly BarcodeReadGuard _readGuard;
+    private readonly BarcodeScannerCoordinator _cameraScanner;
     private readonly ObservableCollection<OperationLineView> _lines = [];
     private long _businessId;
     private long? _lastConfirmedSaleId;
@@ -20,14 +22,32 @@ public partial class NewSalePage : ContentPage
         ProductRepository products,
         InventoryTransactionService transactions,
         BusinessService businesses,
-        BarcodeReadGuard readGuard)
+        BarcodeReadGuard readGuard,
+        BarcodeScannerCoordinator cameraScanner)
     {
         InitializeComponent();
         _products = products;
         _transactions = transactions;
         _businesses = businesses;
         _readGuard = readGuard;
+        _cameraScanner = cameraScanner;
         LineList.ItemsSource = _lines;
+    }
+
+    private async void ScanCamera_Clicked(object? sender, EventArgs e)
+    {
+        var result = await _cameraScanner.ScanAsync("venta", "Escanear producto para salida");
+        if (!result.Success || string.IsNullOrWhiteSpace(result.Code))
+        {
+            ResultLabel.Text = "Puedes escribir el código manualmente.";
+            ProductCodeEntry.Focus();
+            return;
+        }
+
+        ProductCodeEntry.Text = result.Code;
+        ResultLabel.Style = (Style)Application.Current!.Resources["InfoText"];
+        ResultLabel.Text = "Código detectado. Captura cantidad para agregarlo a la venta.";
+        QuantityEntry.Focus();
     }
 
     protected override async void OnAppearing()

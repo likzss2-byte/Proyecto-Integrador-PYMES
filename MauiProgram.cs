@@ -6,6 +6,12 @@ using InventorySystem.Domain;
 using InventorySystem.Infrastructure.Data;
 using InventorySystem.Infrastructure.Repositories;
 using InventorySystem.Infrastructure.Services;
+using InventorySystem.Services;
+#if ANDROID
+using InventorySystem.Platforms.Android;
+#elif WINDOWS
+using InventorySystem.Platforms.Windows;
+#endif
 
 namespace InventorySystem;
 
@@ -18,6 +24,12 @@ public static class MauiProgram
         builder
             .UseMauiApp<App>()
             .UseMauiCommunityToolkit()
+            .ConfigureMauiHandlers(handlers =>
+            {
+#if ANDROID || WINDOWS
+                handlers.AddHandler<Controls.BarcodeCameraPreview, BarcodeCameraPreviewHandler>();
+#endif
+            })
             .ConfigureFonts(fonts =>
             {
                 fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
@@ -37,6 +49,14 @@ public static class MauiProgram
         builder.Services.AddSingleton<DashboardService>();
         builder.Services.AddSingleton<BarcodeReadGuard>();
         builder.Services.AddSingleton<BarcodeScannerService>();
+#if ANDROID
+        builder.Services.AddSingleton<IBarcodeCameraScannerService, AndroidBarcodeCameraScannerService>();
+#elif WINDOWS
+        builder.Services.AddSingleton<IBarcodeCameraScannerService, WindowsBarcodeCameraScannerService>();
+#else
+        builder.Services.AddSingleton<IBarcodeCameraScannerService, UnsupportedBarcodeCameraScannerService>();
+#endif
+        builder.Services.AddSingleton<BarcodeScannerCoordinator>();
         builder.Services.AddSingleton(new HttpClient { Timeout = Timeout.InfiniteTimeSpan });
         builder.Services.AddSingleton<IExternalProductCatalog>(services =>
             new ExternalProductService(services.GetRequiredService<HttpClient>()));
@@ -56,6 +76,7 @@ public static class MauiProgram
         builder.Services.AddTransient<ItemFullPage>();
         builder.Services.AddTransient<PurveyorFullPage>();
         builder.Services.AddTransient<PurveyorContactPage>();
+        builder.Services.AddTransient<BarcodeScannerPage>();
 
         return builder.Build();
     }

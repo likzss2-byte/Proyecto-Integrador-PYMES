@@ -15,10 +15,11 @@
                     <Label Text="Consulta por código" Style="{StaticResource SectionTitle}" />
                     <Label Text="Código manual o lector USB" Style="{StaticResource FieldLabel}" />
                     <Entry x:Name="LookupCode" Style="{StaticResource FormEntry}" Completed="LookupCode_Completed" />
-                    <HorizontalStackLayout Spacing="10">
+                    <FlexLayout Direction="Row" Wrap="Wrap" AlignItems="Start" JustifyContent="Start">
                         <Button Text="Buscar código" Style="{StaticResource PrimaryButton}" Clicked="LookupCode_Clicked" />
-                        <Button Text="Leer desde imagen" Style="{StaticResource SecondaryButton}" Clicked="ReadImage_Clicked" />
-                    </HorizontalStackLayout>
+                        <Button Text="Escanear con cámara" Style="{StaticResource SecondaryButton}" Clicked="ScanCamera_Clicked" Margin="10,0,0,8" />
+                        <Button Text="Leer desde imagen" Style="{StaticResource SecondaryButton}" Clicked="ReadImage_Clicked" Margin="10,0,0,8" />
+                    </FlexLayout>
                     <Label x:Name="LookupMessage" Style="{StaticResource InfoText}" />
                 </VerticalStackLayout>
             </Border>

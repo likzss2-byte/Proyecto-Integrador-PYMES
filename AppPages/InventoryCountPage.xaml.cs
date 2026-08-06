@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using InventorySystem.Domain;
 using InventorySystem.Infrastructure.Repositories;
 using InventorySystem.Infrastructure.Services;
+using InventorySystem.Services;
 
 namespace InventorySystem.AppPages;
 
@@ -12,6 +13,7 @@ public partial class InventoryCountPage : ContentPage
     private readonly InventoryCatalogService _catalog;
     private readonly SupplierRepository _suppliers;
     private readonly BusinessService _businesses;
+    private readonly BarcodeScannerCoordinator _cameraScanner;
     private readonly ObservableCollection<InventoryCountRowViewModel> _visibleRows = [];
     private readonly ObservableCollection<InventoryLotCountRowViewModel> _lotRows = [];
     private readonly List<InventoryCountRowViewModel> _allRows = [];
@@ -25,7 +27,8 @@ public partial class InventoryCountPage : ContentPage
         InventoryCountSessionService sessions,
         InventoryCatalogService catalog,
         SupplierRepository suppliers,
-        BusinessService businesses)
+        BusinessService businesses,
+        BarcodeScannerCoordinator cameraScanner)
     {
         InitializeComponent();
         _mode = mode;
@@ -33,6 +36,7 @@ public partial class InventoryCountPage : ContentPage
         _catalog = catalog;
         _suppliers = suppliers;
         _businesses = businesses;
+        _cameraScanner = cameraScanner;
         CountRowsList.ItemsSource = _visibleRows;
         LotRowsList.ItemsSource = _lotRows;
         ConfigureMode();
@@ -267,6 +271,25 @@ public partial class InventoryCountPage : ContentPage
     private async void ScanCode_Completed(object? sender, EventArgs e) => await AddByCodeAsync();
 
     private async void AddByCode_Clicked(object? sender, EventArgs e) => await AddByCodeAsync();
+
+    private async void ScanCamera_Clicked(object? sender, EventArgs e)
+    {
+        if (!EnsureActiveSession())
+        {
+            return;
+        }
+
+        var result = await _cameraScanner.ScanAsync("conteo-operativo", "Escanear producto para conteo");
+        if (!result.Success || string.IsNullOrWhiteSpace(result.Code))
+        {
+            ShowMessage("Puedes escribir el código manualmente.", isError: false);
+            ScanCodeEntry.Focus();
+            return;
+        }
+
+        ScanCodeEntry.Text = result.Code;
+        await AddByCodeAsync();
+    }
 
     private async Task AddByCodeAsync()
     {
@@ -721,8 +744,9 @@ public sealed class SupplierInventoryPage : InventoryCountPage
         InventoryCountSessionService sessions,
         InventoryCatalogService catalog,
         SupplierRepository suppliers,
-        BusinessService businesses)
-        : base(InventoryCountType.BySupplier, sessions, catalog, suppliers, businesses)
+        BusinessService businesses,
+        BarcodeScannerCoordinator cameraScanner)
+        : base(InventoryCountType.BySupplier, sessions, catalog, suppliers, businesses, cameraScanner)
     {
     }
 }
@@ -733,8 +757,9 @@ public sealed class BrandInventoryPage : InventoryCountPage
         InventoryCountSessionService sessions,
         InventoryCatalogService catalog,
         SupplierRepository suppliers,
-        BusinessService businesses)
-        : base(InventoryCountType.ByBrand, sessions, catalog, suppliers, businesses)
+        BusinessService businesses,
+        BarcodeScannerCoordinator cameraScanner)
+        : base(InventoryCountType.ByBrand, sessions, catalog, suppliers, businesses, cameraScanner)
     {
     }
 }
@@ -745,8 +770,9 @@ public sealed class OperationalInventoryPage : InventoryCountPage
         InventoryCountSessionService sessions,
         InventoryCatalogService catalog,
         SupplierRepository suppliers,
-        BusinessService businesses)
-        : base(InventoryCountType.FreeOperational, sessions, catalog, suppliers, businesses)
+        BusinessService businesses,
+        BarcodeScannerCoordinator cameraScanner)
+        : base(InventoryCountType.FreeOperational, sessions, catalog, suppliers, businesses, cameraScanner)
     {
     }
 }

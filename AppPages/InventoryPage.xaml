@@ -4,43 +4,215 @@
              xmlns:templates="clr-namespace:InventorySystem.VisualElementsTemplates"
              x:Class="InventorySystem.AppPages.InventoryPage"
              Title="Inventario">
-    <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" Padding="28,24,28,0" MaximumWidthRequest="1180" HorizontalOptions="Center">
-        <VerticalStackLayout Spacing="4">
-            <Label Text="Inventario" Style="{StaticResource DesktopPageTitle}" SemanticProperties.HeadingLevel="Level1" />
-            <Label Text="Consulta existencias, lotes e historial." Style="{StaticResource DesktopPageSubtitle}" />
+    <Shell.TitleView>
+        <Grid />
+    </Shell.TitleView>
+    <Grid x:Name="PageRoot"
+          RowDefinitions="Auto,*,Auto"
+          Padding="32,24,32,0">
+        <VisualStateManager.VisualStateGroups>
+            <VisualStateGroup x:Name="WindowWidthStates">
+                <VisualState x:Name="SmallWindow">
+                    <VisualState.StateTriggers>
+                        <AdaptiveTrigger MinWindowWidth="0" />
+                    </VisualState.StateTriggers>
+                    <VisualState.Setters>
+                        <Setter TargetName="PageRoot" Property="Padding" Value="16,16,16,0" />
+                        <Setter TargetName="CountButtonGrid" Property="ColumnDefinitions" Value="*" />
+                        <Setter TargetName="CountButtonGrid" Property="RowDefinitions" Value="Auto,Auto,Auto" />
+                        <Setter TargetName="SupplierInventoryButton" Property="Grid.Row" Value="0" />
+                        <Setter TargetName="SupplierInventoryButton" Property="Grid.Column" Value="0" />
+                        <Setter TargetName="BrandInventoryButton" Property="Grid.Row" Value="1" />
+                        <Setter TargetName="BrandInventoryButton" Property="Grid.Column" Value="0" />
+                        <Setter TargetName="OperationalInventoryButton" Property="Grid.Row" Value="2" />
+                        <Setter TargetName="OperationalInventoryButton" Property="Grid.Column" Value="0" />
+                        <Setter TargetName="OperationalInventoryButton" Property="Grid.ColumnSpan" Value="1" />
+                        <Setter TargetName="SearchSortGrid" Property="ColumnDefinitions" Value="*" />
+                        <Setter TargetName="SearchSortGrid" Property="RowDefinitions" Value="Auto,Auto,Auto" />
+                        <Setter TargetName="InventoryCameraButton" Property="Grid.Row" Value="1" />
+                        <Setter TargetName="InventoryCameraButton" Property="Grid.Column" Value="0" />
+                        <Setter TargetName="InventoryCameraButton" Property="Margin" Value="0,10,0,0" />
+                        <Setter TargetName="InventoryCameraButton" Property="HorizontalOptions" Value="Fill" />
+                        <Setter TargetName="InventorySortButton" Property="Grid.Row" Value="2" />
+                        <Setter TargetName="InventorySortButton" Property="Grid.Column" Value="0" />
+                        <Setter TargetName="InventorySortButton" Property="Margin" Value="0,10,0,0" />
+                        <Setter TargetName="InventorySortButton" Property="HorizontalOptions" Value="Fill" />
+                    </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="MediumWindow">
+                    <VisualState.StateTriggers>
+                        <AdaptiveTrigger MinWindowWidth="700" />
+                    </VisualState.StateTriggers>
+                    <VisualState.Setters>
+                        <Setter TargetName="PageRoot" Property="Padding" Value="24,20,24,0" />
+                        <Setter TargetName="CountButtonGrid" Property="ColumnDefinitions" Value="*,*" />
+                        <Setter TargetName="CountButtonGrid" Property="RowDefinitions" Value="Auto,Auto" />
+                        <Setter TargetName="SupplierInventoryButton" Property="Grid.Row" Value="0" />
+                        <Setter TargetName="SupplierInventoryButton" Property="Grid.Column" Value="0" />
+                        <Setter TargetName="BrandInventoryButton" Property="Grid.Row" Value="0" />
+                        <Setter TargetName="BrandInventoryButton" Property="Grid.Column" Value="1" />
+                        <Setter TargetName="OperationalInventoryButton" Property="Grid.Row" Value="1" />
+                        <Setter TargetName="OperationalInventoryButton" Property="Grid.Column" Value="0" />
+                        <Setter TargetName="OperationalInventoryButton" Property="Grid.ColumnSpan" Value="2" />
+                        <Setter TargetName="SearchSortGrid" Property="ColumnDefinitions" Value="*,Auto,Auto" />
+                        <Setter TargetName="SearchSortGrid" Property="RowDefinitions" Value="Auto" />
+                        <Setter TargetName="InventoryCameraButton" Property="Grid.Row" Value="0" />
+                        <Setter TargetName="InventoryCameraButton" Property="Grid.Column" Value="1" />
+                        <Setter TargetName="InventoryCameraButton" Property="Margin" Value="0" />
+                        <Setter TargetName="InventoryCameraButton" Property="HorizontalOptions" Value="End" />
+                        <Setter TargetName="InventorySortButton" Property="Grid.Row" Value="0" />
+                        <Setter TargetName="InventorySortButton" Property="Grid.Column" Value="2" />
+                        <Setter TargetName="InventorySortButton" Property="Margin" Value="0" />
+                        <Setter TargetName="InventorySortButton" Property="HorizontalOptions" Value="End" />
+                    </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="WideWindow">
+                    <VisualState.StateTriggers>
+                        <AdaptiveTrigger MinWindowWidth="1050" />
+                    </VisualState.StateTriggers>
+                    <VisualState.Setters>
+                        <Setter TargetName="PageRoot" Property="Padding" Value="32,24,32,0" />
+                        <Setter TargetName="CountButtonGrid" Property="ColumnDefinitions" Value="*,*,*" />
+                        <Setter TargetName="CountButtonGrid" Property="RowDefinitions" Value="Auto" />
+                        <Setter TargetName="SupplierInventoryButton" Property="Grid.Row" Value="0" />
+                        <Setter TargetName="SupplierInventoryButton" Property="Grid.Column" Value="0" />
+                        <Setter TargetName="BrandInventoryButton" Property="Grid.Row" Value="0" />
+                        <Setter TargetName="BrandInventoryButton" Property="Grid.Column" Value="1" />
+                        <Setter TargetName="OperationalInventoryButton" Property="Grid.Row" Value="0" />
+                        <Setter TargetName="OperationalInventoryButton" Property="Grid.Column" Value="2" />
+                        <Setter TargetName="OperationalInventoryButton" Property="Grid.ColumnSpan" Value="1" />
+                        <Setter TargetName="SearchSortGrid" Property="ColumnDefinitions" Value="*,Auto,Auto" />
+                        <Setter TargetName="SearchSortGrid" Property="RowDefinitions" Value="Auto" />
+                        <Setter TargetName="InventoryCameraButton" Property="Grid.Row" Value="0" />
+                        <Setter TargetName="InventoryCameraButton" Property="Grid.Column" Value="1" />
+                        <Setter TargetName="InventoryCameraButton" Property="Margin" Value="0" />
+                        <Setter TargetName="InventoryCameraButton" Property="HorizontalOptions" Value="End" />
+                        <Setter TargetName="InventorySortButton" Property="Grid.Row" Value="0" />
+                        <Setter TargetName="InventorySortButton" Property="Grid.Column" Value="2" />
+                        <Setter TargetName="InventorySortButton" Property="Margin" Value="0" />
+                        <Setter TargetName="InventorySortButton" Property="HorizontalOptions" Value="End" />
+                    </VisualState.Setters>
+                </VisualState>
+            </VisualStateGroup>
+        </VisualStateManager.VisualStateGroups>
+
+        <VerticalStackLayout Grid.Row="0"
+                             Spacing="4"
+                             Margin="0,0,0,18"
+                             MaximumWidthRequest="1080"
+                             HorizontalOptions="Fill">
+            <Label Text="Inventario"
+                   Style="{StaticResource DesktopPageTitle}"
+                   SemanticProperties.HeadingLevel="Level1" />
+            <Label Text="Consulta existencias, lotes e historial."
+                   Style="{StaticResource DesktopPageSubtitle}" />
         </VerticalStackLayout>
-        <Border Grid.Row="1" Style="{StaticResource Card}" Margin="0,14,0,0" Padding="14">
-            <VerticalStackLayout Spacing="10">
-                <Label Text="Conteo físico" Style="{StaticResource SectionTitle}" />
-                <Grid ColumnDefinitions="*,*,*" ColumnSpacing="10">
-                    <Button Text="Por proveedor" Style="{StaticResource SecondaryButton}" Clicked="OpenSupplierInventory_Clicked" />
-                    <Button Grid.Column="1" Text="Por marca" Style="{StaticResource SecondaryButton}" Clicked="OpenBrandInventory_Clicked" />
-                    <Button Grid.Column="2" Text="Inventario operativo" Style="{StaticResource PrimaryButton}" Clicked="OpenOperationalInventory_Clicked" />
-                </Grid>
-            </VerticalStackLayout>
-        </Border>
-        <Grid Grid.Row="2" ColumnDefinitions="*,Auto" ColumnSpacing="12" Margin="0,14,0,10">
-            <templates:SearchBar x:Name="InventorySearch" />
-            <templates:SortButton x:Name="InventorySortButton" Grid.Column="1" SortChanged="InventorySortButton_SortChanged" />
+
+        <Grid Grid.Row="1"
+              RowDefinitions="Auto,Auto,*"
+              RowSpacing="16"
+              MaximumWidthRequest="1080"
+              HorizontalOptions="Fill">
+            <Border Grid.Row="0" Style="{StaticResource Card}">
+                <VerticalStackLayout Spacing="12">
+                    <Label Text="Conteo físico" Style="{StaticResource SectionTitle}" />
+                    <Grid x:Name="CountButtonGrid"
+                          ColumnDefinitions="*,*,*"
+                          RowDefinitions="Auto"
+                          ColumnSpacing="10"
+                          RowSpacing="10">
+                        <Button x:Name="SupplierInventoryButton"
+                                Text="Por proveedor"
+                                Style="{StaticResource SecondaryButton}"
+                                HorizontalOptions="Fill"
+                                Clicked="OpenSupplierInventory_Clicked" />
+                        <Button x:Name="BrandInventoryButton"
+                                Grid.Column="1"
+                                Text="Por marca"
+                                Style="{StaticResource SecondaryButton}"
+                                HorizontalOptions="Fill"
+                                Clicked="OpenBrandInventory_Clicked" />
+                        <Button x:Name="OperationalInventoryButton"
+                                Grid.Column="2"
+                                Text="Inventario operativo"
+                                Style="{StaticResource PrimaryButton}"
+                                HorizontalOptions="Fill"
+                                Clicked="OpenOperationalInventory_Clicked" />
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
+
+            <Grid x:Name="SearchSortGrid"
+                  Grid.Row="1"
+                  ColumnDefinitions="*,Auto,Auto"
+                  RowDefinitions="Auto"
+                  ColumnSpacing="12">
+                <templates:SearchBar x:Name="InventorySearch"
+                                     HorizontalOptions="Fill"
+                                     VerticalOptions="Center" />
+                <Button x:Name="InventoryCameraButton"
+                        Grid.Column="1"
+                        Text="Escanear con cámara"
+                        Style="{StaticResource SecondaryButton}"
+                        VerticalOptions="Center"
+                        Clicked="ScanInventoryCamera_Clicked" />
+                <templates:SortButton x:Name="InventorySortButton"
+                                      Grid.Column="2"
+                                      MinimumWidthRequest="112"
+                                      HorizontalOptions="End"
+                                      VerticalOptions="Center"
+                                      SortChanged="InventorySortButton_SortChanged" />
+            </Grid>
+
+            <CollectionView x:Name="InventoryItems"
+                            Grid.Row="2"
+                            SelectionMode="Single"
+                            SelectionChanged="InventoryItems_SelectionChanged"
+                            VerticalOptions="Fill">
+                <CollectionView.EmptyView>
+                    <Label Text="Aún no hay productos por mostrar."
+                           Margin="0,24"
+                           HorizontalOptions="Center"
+                           Style="{StaticResource HelperText}" />
+                </CollectionView.EmptyView>
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <Border Style="{StaticResource ListRow}" Margin="0,4">
+                            <Grid ColumnDefinitions="*,Auto"
+                                  RowDefinitions="Auto,Auto,Auto"
+                                  ColumnSpacing="12"
+                                  RowSpacing="2">
+                                <Label Text="{Binding Name}"
+                                       FontAttributes="Bold"
+                                       FontSize="16"
+                                       LineBreakMode="WordWrap" />
+                                <Label Grid.Column="1"
+                                       Text="{Binding DisplayStock}"
+                                       FontAttributes="Bold"
+                                       VerticalOptions="Center" />
+                                <Label Grid.Row="1"
+                                       Text="{Binding Brand}"
+                                       LineBreakMode="WordWrap" />
+                                <Label Grid.Row="2"
+                                       Text="{Binding DisplayCode}"
+                                       Style="{StaticResource HelperText}"
+                                       LineBreakMode="WordWrap" />
+                                <Label Grid.Row="2"
+                                       Grid.Column="1"
+                                       Text="{Binding ExpirationMode}"
+                                       Style="{StaticResource HelperText}"
+                                       HorizontalTextAlignment="End" />
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
         </Grid>
-        <CollectionView x:Name="InventoryItems" Grid.Row="3" SelectionMode="Single" SelectionChanged="InventoryItems_SelectionChanged">
-            <CollectionView.EmptyView>
-                <Label Text="Aún no hay productos por mostrar." HorizontalOptions="Center" VerticalOptions="Center" Style="{StaticResource HelperText}" />
-            </CollectionView.EmptyView>
-            <CollectionView.ItemTemplate>
-                <DataTemplate>
-                    <Border Style="{StaticResource ListRow}" Margin="0,4" Padding="12">
-                        <Grid ColumnDefinitions="2*,*,Auto" RowDefinitions="Auto,Auto">
-                            <Label Text="{Binding Name}" FontAttributes="Bold" FontSize="16" />
-                            <Label Grid.Row="1" Text="{Binding DisplayCode}" Style="{StaticResource HelperText}" />
-                            <Label Grid.Column="1" Text="{Binding Brand}" />
-                            <Label Grid.Row="1" Grid.Column="1" Text="{Binding ExpirationMode}" Style="{StaticResource HelperText}" />
-                            <Label Grid.Column="2" Grid.RowSpan="2" Text="{Binding DisplayStock}" FontAttributes="Bold" VerticalOptions="Center" />
-                        </Grid>
-                    </Border>
-                </DataTemplate>
-            </CollectionView.ItemTemplate>
-        </CollectionView>
-        <templates:Dock Grid.Row="4" IsVisible="{OnPlatform WinUI=False, Default=True}" VerticalOptions="End" />
+
+        <templates:Dock Grid.Row="2"
+                        MaximumWidthRequest="1080"
+                        HorizontalOptions="Fill"
+                        IsVisible="{OnPlatform WinUI=False, Default=True}"
+                        VerticalOptions="End" />
     </Grid>
 </ContentPage>

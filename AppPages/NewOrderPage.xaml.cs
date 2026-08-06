@@ -3,6 +3,7 @@ using System.Globalization;
 using InventorySystem.Domain;
 using InventorySystem.Infrastructure.Repositories;
 using InventorySystem.Infrastructure.Services;
+using InventorySystem.Services;
 
 namespace InventorySystem.AppPages;
 
@@ -13,6 +14,7 @@ public partial class NewOrderPage : ContentPage
     private readonly InventoryTransactionService _transactions;
     private readonly BusinessService _businesses;
     private readonly BarcodeReadGuard _readGuard;
+    private readonly BarcodeScannerCoordinator _cameraScanner;
     private readonly ObservableCollection<OperationLineView> _lines = [];
     private long _businessId;
     private long? _lastConfirmedEntryId;
@@ -22,7 +24,8 @@ public partial class NewOrderPage : ContentPage
         SupplierRepository suppliers,
         InventoryTransactionService transactions,
         BusinessService businesses,
-        BarcodeReadGuard readGuard)
+        BarcodeReadGuard readGuard,
+        BarcodeScannerCoordinator cameraScanner)
     {
         InitializeComponent();
         _products = products;
@@ -30,9 +33,25 @@ public partial class NewOrderPage : ContentPage
         _transactions = transactions;
         _businesses = businesses;
         _readGuard = readGuard;
+        _cameraScanner = cameraScanner;
         LineList.ItemsSource = _lines;
-        ManufacturingDatePicker.Date = DateTime.Today;
         ExpirationDatePicker.Date = DateTime.Today.AddDays(30);
+    }
+
+    private async void ScanCamera_Clicked(object? sender, EventArgs e)
+    {
+        var result = await _cameraScanner.ScanAsync("entrada", "Escanear producto para entrada");
+        if (!result.Success || string.IsNullOrWhiteSpace(result.Code))
+        {
+            ResultLabel.Text = "Puedes escribir el código manualmente.";
+            ProductCodeEntry.Focus();
+            return;
+        }
+
+        ProductCodeEntry.Text = result.Code;
+        ResultLabel.Style = (Style)Application.Current!.Resources["InfoText"];
+        ResultLabel.Text = "Código detectado. Captura cantidad y costo para agregarlo a la entrada.";
+        QuantityEntry.Focus();
     }
 
     protected override async void OnAppearing()
@@ -40,6 +59,7 @@ public partial class NewOrderPage : ContentPage
         base.OnAppearing();
         try
         {
+            await PageScroll.ScrollToAsync(0, 0, false);
             _businessId = (await _businesses.GetDefaultAsync()).Id;
             SupplierPicker.ItemsSource = (await _suppliers.SearchAsync(_businessId)).ToList();
             SupplierPicker.ItemDisplayBinding = new Binding(nameof(Supplier.CompanyName));
@@ -103,9 +123,7 @@ public partial class NewOrderPage : ContentPage
                 Quantity = quantity,
                 UnitPrice = cost,
                 LotCode = LotCodeEntry.Text,
-                ManufacturingDate = HasManufacturingDateCheck.IsChecked
-                    ? DateOnly.FromDateTime(ManufacturingDatePicker.Date ?? DateTime.Today)
-                    : null,
+                ManufacturingDate = null,
                 ExpirationDate = HasExpirationDateCheck.IsChecked
                     ? DateOnly.FromDateTime(ExpirationDatePicker.Date ?? DateTime.Today)
                     : null
@@ -114,7 +132,6 @@ public partial class NewOrderPage : ContentPage
             QuantityEntry.Text = string.Empty;
             UnitCostEntry.Text = string.Empty;
             LotCodeEntry.Text = string.Empty;
-            HasManufacturingDateCheck.IsChecked = false;
             HasExpirationDateCheck.IsChecked = false;
             _readGuard.Reset("entrada");
             UpdateTotal();
@@ -192,9 +209,6 @@ public partial class NewOrderPage : ContentPage
             ResultLabel.Text = error.Message;
         }
     }
-
-    private void HasManufacturingDateCheck_Changed(object? sender, CheckedChangedEventArgs e) =>
-        ManufacturingDatePicker.IsVisible = e.Value;
 
     private void HasExpirationDateCheck_Changed(object? sender, CheckedChangedEventArgs e) =>
         ExpirationDatePicker.IsVisible = e.Value;

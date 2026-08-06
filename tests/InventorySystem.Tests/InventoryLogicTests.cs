@@ -1,3 +1,5 @@
+using System.Net;
+using System.Text;
 using InventorySystem.Domain;
 using InventorySystem.Infrastructure.Data;
 using InventorySystem.Infrastructure.Repositories;
@@ -30,6 +32,39 @@ public sealed class InventoryLogicTests
             () => context.CreateProductAsync("SKU-002", barcode: "7501055300075"));
 
         Assert.Contains("barras", error.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Theory]
+    [InlineData("96385074")]
+    [InlineData("4006381333931")]
+    [InlineData("036000291452")]
+    [InlineData("10012345000017")]
+    public void Codigos_EAN_UPC_y_GTIN_validan_digito_verificador(string code)
+    {
+        Assert.True(BarcodeRules.IsSupportedExternalBarcode(code));
+        Assert.True(BarcodeRules.IsChecksumValid(code));
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("ABC7501055300075")]
+    [InlineData("1234567")]
+    [InlineData("4006381333932")]
+    public void Codigos_invalidos_no_pasan_validacion_completa(string code)
+    {
+        Assert.False(BarcodeRules.IsChecksumValid(code));
+    }
+
+    [Fact]
+    public async Task Api_externa_no_se_consulta_con_checksum_invalido()
+    {
+        var handler = new CountingHttpHandler();
+        var service = new ExternalProductService(new HttpClient(handler));
+
+        var result = await service.FindAsync("4006381333932");
+
+        Assert.Null(result);
+        Assert.Equal(0, handler.Requests);
     }
 
     [Fact]
@@ -1084,6 +1119,21 @@ public sealed class InventoryLogicTests
     {
         public Task<ExternalProduct?> FindAsync(string barcode, CancellationToken cancellationToken = default) =>
             Task.FromResult(result);
+    }
+
+    private sealed class CountingHttpHandler : HttpMessageHandler
+    {
+        public int Requests { get; private set; }
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            Requests++;
+            var response = new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("""{"status":1,"product":{"product_name":"Producto"}}""", Encoding.UTF8, "application/json")
+            };
+            return Task.FromResult(response);
+        }
     }
 
     private sealed class ManualTimeProvider : TimeProvider

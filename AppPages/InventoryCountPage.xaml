@@ -69,18 +69,19 @@
                             <Label Grid.Column="2" x:Name="PendingLabel" VerticalOptions="Center" Style="{StaticResource InfoText}" />
                         </Grid>
 
-                        <Grid x:Name="FreeProductPanel" ColumnDefinitions="1.2*,Auto,1.4*,Auto" ColumnSpacing="10" IsVisible="False">
+                        <Grid x:Name="FreeProductPanel" ColumnDefinitions="1.2*,Auto,Auto,1.4*,Auto" ColumnSpacing="10" IsVisible="False">
                             <VerticalStackLayout Spacing="4">
                                 <Label Text="Escáner, código de barras o SKU" Style="{StaticResource FieldLabel}" />
                                 <Entry x:Name="ScanCodeEntry" Style="{StaticResource FormEntry}" ReturnType="Go" Completed="ScanCode_Completed" />
                             </VerticalStackLayout>
                             <Button Grid.Column="1" Text="Agregar" Style="{StaticResource PrimaryButton}" VerticalOptions="End" Clicked="AddByCode_Clicked" />
-                            <VerticalStackLayout Grid.Column="2" Spacing="4">
+                            <Button Grid.Column="2" Text="Escanear con cámara" Style="{StaticResource SecondaryButton}" VerticalOptions="End" Clicked="ScanCamera_Clicked" />
+                            <VerticalStackLayout Grid.Column="3" Spacing="4">
                                 <Label Text="Buscar por nombre" Style="{StaticResource FieldLabel}" />
                                 <Entry x:Name="FreeSearchEntry" Style="{StaticResource FormEntry}" TextChanged="FreeSearch_TextChanged" />
                                 <Picker x:Name="FreeProductPicker" Style="{StaticResource FormPicker}" Title="Selecciona un resultado" ItemDisplayBinding="{Binding Name}" />
                             </VerticalStackLayout>
-                            <Button Grid.Column="3" Text="Agregar selección" Style="{StaticResource SecondaryButton}" VerticalOptions="End" Clicked="AddSelectedProduct_Clicked" />
+                            <Button Grid.Column="4" Text="Agregar selección" Style="{StaticResource SecondaryButton}" VerticalOptions="End" Clicked="AddSelectedProduct_Clicked" />
                         </Grid>
 
                         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">

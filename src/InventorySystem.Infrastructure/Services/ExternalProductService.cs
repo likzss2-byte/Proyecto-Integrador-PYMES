@@ -25,7 +25,7 @@ public sealed class ExternalProductService : IExternalProductCatalog
         CancellationToken cancellationToken = default)
     {
         barcode = InventoryRules.NormalizeScannedCode(barcode);
-        if (!BarcodeRules.IsSupportedExternalBarcode(barcode))
+        if (!BarcodeRules.IsSupportedExternalBarcode(barcode) || !BarcodeRules.IsChecksumValid(barcode))
         {
             return null;
         }

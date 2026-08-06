@@ -2,9 +2,11 @@
 <ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="InventorySystem.VisualElementsTemplates.SearchBar">
-	<SearchBar        
+	<SearchBar
         x:Name="InventorySearchBar"
-        Margin="20,2,20,12"
+        Margin="0"
+        MinimumHeightRequest="50"
+        HorizontalOptions="Fill"
         Placeholder="Buscar..."
         TextChanged="InventorySearchBar_TextChanged"
         ReturnType="Search"/>

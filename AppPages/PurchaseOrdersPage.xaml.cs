@@ -3,6 +3,7 @@ using System.Globalization;
 using InventorySystem.Domain;
 using InventorySystem.Infrastructure.Repositories;
 using InventorySystem.Infrastructure.Services;
+using InventorySystem.Services;
 
 namespace InventorySystem.AppPages;
 
@@ -12,6 +13,7 @@ public partial class PurchaseOrdersPage : ContentPage
     private readonly ProductRepository _products;
     private readonly SupplierRepository _suppliers;
     private readonly BusinessService _businesses;
+    private readonly BarcodeScannerCoordinator _cameraScanner;
     private readonly ObservableCollection<PurchaseOrderLineDraft> _draftLines = [];
     private readonly ObservableCollection<PurchaseOrder> _orders = [];
     private long _businessId;
@@ -23,13 +25,15 @@ public partial class PurchaseOrdersPage : ContentPage
         PurchaseOrderService ordersService,
         ProductRepository products,
         SupplierRepository suppliers,
-        BusinessService businesses)
+        BusinessService businesses,
+        BarcodeScannerCoordinator cameraScanner)
     {
         InitializeComponent();
         _ordersService = ordersService;
         _products = products;
         _suppliers = suppliers;
         _businesses = businesses;
+        _cameraScanner = cameraScanner;
         DraftLinesList.ItemsSource = _draftLines;
         OrdersList.ItemsSource = _orders;
         UnitPicker.SelectedIndex = 0;
@@ -40,11 +44,44 @@ public partial class PurchaseOrdersPage : ContentPage
         ReceiptExpirationDatePicker.Date = DateTime.Today.AddDays(30);
     }
 
+    private async void ScanOrderLineCamera_Clicked(object? sender, EventArgs e)
+    {
+        var result = await _cameraScanner.ScanAsync("pedido-concepto", "Escanear producto para pedido");
+        if (!result.Success || string.IsNullOrWhiteSpace(result.Code))
+        {
+            LineErrorLabel.Text = "Puedes escribir el código manualmente.";
+            ProductCodeEntry.Focus();
+            return;
+        }
+
+        ProductCodeEntry.Text = result.Code;
+        LineErrorLabel.Style = (Style)Application.Current!.Resources["InfoText"];
+        LineErrorLabel.Text = "Código detectado. Completa cantidad y costo antes de agregar el concepto.";
+        RequestedQuantityEntry.Focus();
+    }
+
+    private async void ScanReceiptCamera_Clicked(object? sender, EventArgs e)
+    {
+        var result = await _cameraScanner.ScanAsync("recepcion-pedido", "Escanear producto para recepción");
+        if (!result.Success || string.IsNullOrWhiteSpace(result.Code))
+        {
+            ReceiptResultLabel.Text = "Puedes escribir el código manualmente.";
+            ReceiptProductCodeEntry.Focus();
+            return;
+        }
+
+        ReceiptProductCodeEntry.Text = result.Code;
+        ReceiptResultLabel.Style = (Style)Application.Current!.Resources["InfoText"];
+        ReceiptResultLabel.Text = "Código detectado. Revisa cantidad, lote y caducidad antes de confirmar la recepción.";
+        ReceiptQuantityEntry.Focus();
+    }
+
     protected override async void OnAppearing()
     {
         base.OnAppearing();
         try
         {
+            await PageScroll.ScrollToAsync(0, 0, false);
             _businessId = (await _businesses.GetDefaultAsync()).Id;
             var suppliers = await _suppliers.SearchAsync(_businessId);
             SupplierPicker.ItemsSource = suppliers.ToList();
