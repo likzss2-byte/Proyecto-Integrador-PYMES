@@ -3,64 +3,54 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="InventorySystem.MainPage"
              Title="Inicio">
-    <ScrollView>
-        <VerticalStackLayout Padding="28,24" Spacing="18" MaximumWidthRequest="1180" HorizontalOptions="Center">
-            <Grid ColumnDefinitions="*,Auto">
-                <VerticalStackLayout Spacing="4">
-                    <Label Text="Panel de inicio" Style="{StaticResource DesktopPageTitle}" />
-                    <Label Text="Existencias, caducidades y pedidos." Style="{StaticResource DesktopPageSubtitle}" />
-                </VerticalStackLayout>
-                <Button Grid.Column="1" Text="Actualizar" Style="{StaticResource SecondaryButton}" Clicked="RefreshDashboard_Clicked" />
-            </Grid>
+    <Grid>
+        <ScrollView>
+            <VerticalStackLayout Padding="28,24" Spacing="18" MaximumWidthRequest="1180" HorizontalOptions="Center">
+                <Grid ColumnDefinitions="*,Auto">
+                    <Button Grid.Column="1" Text="Actualizar" Style="{StaticResource SecondaryButton}" Clicked="RefreshDashboard_Clicked" />
+                </Grid>
 
-            <Grid ColumnDefinitions="*,*,*,*,*" ColumnSpacing="10">
-                <Border Style="{StaticResource Card}" Padding="14">
-                    <VerticalStackLayout>
-                        <Label x:Name="MinimumStockCount" Text="0" FontSize="28" FontAttributes="Bold" />
-                        <Label Text="Stock mínimo" Style="{StaticResource HelperText}" />
-                    </VerticalStackLayout>
-                </Border>
-                <Border Grid.Column="1" Style="{StaticResource AlertCard}" Padding="14">
-                    <VerticalStackLayout>
-                        <Label x:Name="ExpiringCount" Text="0" FontSize="28" FontAttributes="Bold" />
-                        <Label Text="Caducan en 7 días" Style="{StaticResource HelperText}" />
-                    </VerticalStackLayout>
-                </Border>
-                <Border Grid.Column="2" Style="{StaticResource ExpiredCard}" Padding="14">
-                    <VerticalStackLayout>
-                        <Label x:Name="ExpiredCount" Text="0" FontSize="28" FontAttributes="Bold" />
-                        <Label Text="Lotes caducados" Style="{StaticResource HelperText}" />
-                    </VerticalStackLayout>
-                </Border>
-                <Border Grid.Column="3" Style="{StaticResource Card}" Padding="14">
-                    <VerticalStackLayout>
-                        <Label x:Name="PendingOrdersCount" Text="0" FontSize="28" FontAttributes="Bold" />
-                        <Label Text="Pedidos pendientes" Style="{StaticResource HelperText}" />
-                    </VerticalStackLayout>
-                </Border>
-                <Border Grid.Column="4" Style="{StaticResource Card}" Padding="14">
-                    <VerticalStackLayout>
-                        <Label x:Name="PartialOrdersCount" Text="0" FontSize="28" FontAttributes="Bold" />
-                        <Label Text="Recepción parcial" Style="{StaticResource HelperText}" />
-                    </VerticalStackLayout>
-                </Border>
-            </Grid>
+                <FlexLayout Direction="Row" Wrap="Wrap" AlignItems="Stretch" JustifyContent="Start">
+                    <Border x:Name="MinimumStockSummaryCard" Style="{StaticResource Card}" Padding="14"
+                            MinimumWidthRequest="250" Margin="0,0,10,10" FlexLayout.Grow="1">
+                        <VerticalStackLayout>
+                            <Label x:Name="MinimumStockCount" Text="0" FontSize="28" FontAttributes="Bold" />
+                            <Label Text="Stock mínimo" Style="{StaticResource HelperText}" />
+                        </VerticalStackLayout>
+                    </Border>
+                    <Border x:Name="ExpiringSummaryCard" Style="{StaticResource AlertCard}" Padding="14"
+                            MinimumWidthRequest="250" Margin="0,0,10,10" FlexLayout.Grow="1">
+                        <VerticalStackLayout>
+                            <Label x:Name="ExpiringCount" Text="0" FontSize="28" FontAttributes="Bold" />
+                            <Label Text="Caducan en 7 días" Style="{StaticResource HelperText}" />
+                        </VerticalStackLayout>
+                    </Border>
+                    <Border x:Name="ExpiredSummaryCard" Style="{StaticResource ExpiredCard}" Padding="14"
+                            MinimumWidthRequest="250" Margin="0,0,10,10" FlexLayout.Grow="1">
+                        <VerticalStackLayout>
+                            <Label x:Name="ExpiredCount" Text="0" FontSize="28" FontAttributes="Bold" />
+                            <Label Text="Lotes caducados" Style="{StaticResource HelperText}" />
+                        </VerticalStackLayout>
+                    </Border>
 
-            <Grid ColumnDefinitions="*,*" ColumnSpacing="18">
-                <Border Style="{StaticResource Card}">
+                    <!-- Espacios preparados para dos widgets futuros. Al permanecer ocultos, los tres widgets activos usan todo el ancho. -->
+                    <Border x:Name="FutureSummaryWidgetPlaceholder1" IsVisible="False" Style="{StaticResource Card}"
+                            MinimumWidthRequest="250" Margin="0,0,10,10" FlexLayout.Grow="1" />
+                    <Border x:Name="FutureSummaryWidgetPlaceholder2" IsVisible="False" Style="{StaticResource Card}"
+                            MinimumWidthRequest="250" Margin="0,0,10,10" FlexLayout.Grow="1" />
+                </FlexLayout>
+
+                <Border x:Name="MinimumStockSection" Style="{StaticResource Card}">
                     <VerticalStackLayout Spacing="10">
                         <Label Text="Productos en stock mínimo" Style="{StaticResource SectionTitle}" />
                         <CollectionView x:Name="MinimumStockList" HeightRequest="300" SelectionMode="Single" SelectionChanged="ProductAlert_SelectionChanged">
-                            <CollectionView.EmptyView>
-                                <Label Text="No hay productos en stock mínimo." Style="{StaticResource HelperText}" />
-                            </CollectionView.EmptyView>
                             <CollectionView.ItemTemplate>
                                 <DataTemplate>
                                     <Border Style="{StaticResource ListRow}" Margin="0,3">
                                         <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
                                             <Label Text="{Binding ProductName}" FontAttributes="Bold" />
                                             <Label Grid.Row="1" Text="{Binding Code}" Style="{StaticResource HelperText}" />
-                                            <Label Grid.Column="1" Text="{Binding Status}" TextColor="#B54708" FontAttributes="Bold" />
+                                            <Label Grid.Column="1" Text="{Binding Status}" FontAttributes="Bold" />
                                             <Label Grid.Row="1" Grid.Column="1" Text="{Binding DisplayStock}" Style="{StaticResource HelperText}" />
                                         </Grid>
                                     </Border>
@@ -70,13 +60,10 @@
                     </VerticalStackLayout>
                 </Border>
 
-                <Border Grid.Column="1" Style="{StaticResource AlertCard}">
+                <Border x:Name="ExpiringSection" Style="{StaticResource AlertCard}">
                     <VerticalStackLayout Spacing="10">
-                        <Label Text="Próximos a caducar (0–7 días)" Style="{StaticResource SectionTitle}" />
+                        <Label Text="Próximos a caducar" Style="{StaticResource SectionTitle}" />
                         <CollectionView x:Name="ExpiringList" HeightRequest="300" SelectionMode="Single" SelectionChanged="ExpirationAlert_SelectionChanged">
-                            <CollectionView.EmptyView>
-                                <Label Text="No hay lotes próximos a caducar." Style="{StaticResource HelperText}" />
-                            </CollectionView.EmptyView>
                             <CollectionView.ItemTemplate>
                                 <DataTemplate>
                                     <Border Style="{StaticResource ListRow}" Margin="0,3">
@@ -84,7 +71,7 @@
                                             <Label Text="{Binding ProductName}" FontAttributes="Bold" />
                                             <Label Grid.Row="1" Text="{Binding LotCode, StringFormat='Lote: {0}'}" Style="{StaticResource HelperText}" />
                                             <Label Grid.Row="2" Text="{Binding SupplierName, StringFormat='Proveedor: {0}'}" Style="{StaticResource HelperText}" />
-                                            <Label Grid.Column="1" Text="{Binding DisplayDays}" TextColor="#B54708" FontAttributes="Bold" />
+                                            <Label Grid.Column="1" Text="{Binding DisplayDays}" FontAttributes="Bold" />
                                             <Label Grid.Row="1" Grid.Column="1" Text="{Binding DisplayExpiration}" Style="{StaticResource HelperText}" />
                                             <Label Grid.Row="2" Grid.Column="1" Text="{Binding DisplayQuantity}" Style="{StaticResource HelperText}" />
                                         </Grid>
@@ -94,32 +81,32 @@
                         </CollectionView>
                     </VerticalStackLayout>
                 </Border>
-            </Grid>
 
-            <Border Style="{StaticResource ExpiredCard}">
-                <VerticalStackLayout Spacing="10">
-                    <Label Text="Productos caducados con existencia" Style="{StaticResource SectionTitle}" />
-                    <Label Text="Estos lotes no se despachan automáticamente. Una venta requiere confirmación explícita." Style="{StaticResource HelperText}" />
-                    <CollectionView x:Name="ExpiredList" HeightRequest="240" SelectionMode="Single" SelectionChanged="ExpirationAlert_SelectionChanged">
-                        <CollectionView.EmptyView>
-                            <Label Text="No hay lotes caducados con existencia." Style="{StaticResource HelperText}" />
-                        </CollectionView.EmptyView>
-                        <CollectionView.ItemTemplate>
-                            <DataTemplate>
-                                <Border Style="{StaticResource ListRow}" Margin="0,3">
-                                    <Grid ColumnDefinitions="2*,*,*,*">
-                                        <Label Text="{Binding ProductName}" FontAttributes="Bold" />
-                                        <Label Grid.Column="1" Text="{Binding LotCode, StringFormat='Lote {0}'}" />
-                                        <Label Grid.Column="2" Text="{Binding DisplayExpiration}" />
-                                        <Label Grid.Column="3" Text="{Binding DisplayQuantity}" HorizontalTextAlignment="End" />
-                                    </Grid>
-                                </Border>
-                            </DataTemplate>
-                        </CollectionView.ItemTemplate>
-                    </CollectionView>
-                </VerticalStackLayout>
-            </Border>
-            <Label x:Name="DashboardErrorLabel" Style="{StaticResource ErrorText}" />
-        </VerticalStackLayout>
-    </ScrollView>
+                <Border x:Name="ExpiredSection" Style="{StaticResource ExpiredCard}">
+                    <VerticalStackLayout Spacing="10">
+                        <Label Text="Productos caducados con existencia" Style="{StaticResource SectionTitle}" />
+                        <CollectionView x:Name="ExpiredList" HeightRequest="240" SelectionMode="Single" SelectionChanged="ExpirationAlert_SelectionChanged">
+                            <CollectionView.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Style="{StaticResource ListRow}" Margin="0,3">
+                                        <Grid ColumnDefinitions="2*,*,*,*">
+                                            <Label Text="{Binding ProductName}" FontAttributes="Bold" />
+                                            <Label Grid.Column="1" Text="{Binding LotCode, StringFormat='Lote {0}'}" />
+                                            <Label Grid.Column="2" Text="{Binding DisplayExpiration}" />
+                                            <Label Grid.Column="3" Text="{Binding DisplayQuantity}" HorizontalTextAlignment="End" />
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </CollectionView.ItemTemplate>
+                        </CollectionView>
+                    </VerticalStackLayout>
+                </Border>
+                <Label x:Name="DashboardErrorLabel" Style="{StaticResource ErrorText}" />
+            </VerticalStackLayout>
+        </ScrollView>
+
+        <Label x:Name="EmptyDashboardLabel" Text="No hay alertas de inventario por mostrar."
+               Style="{StaticResource HelperText}" FontSize="16"
+               HorizontalOptions="Center" VerticalOptions="Center" IsVisible="False" />
+    </Grid>
 </ContentPage>

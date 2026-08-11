@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="InventorySystem.AppPages.LotDetailPage"
+             Title="Detalle de lote">
+    <ScrollView>
+        <VerticalStackLayout Padding="28,24" Spacing="18" MaximumWidthRequest="900" HorizontalOptions="Center">
+            <VerticalStackLayout Spacing="4">
+                <Label x:Name="ProductNameLabel" Style="{StaticResource DesktopPageTitle}" />
+                <Label x:Name="LotSummaryLabel" Style="{StaticResource DesktopPageSubtitle}" />
+            </VerticalStackLayout>
+
+            <Border Style="{StaticResource Card}">
+                <VerticalStackLayout Spacing="14">
+                    <Label Text="Datos del lote" Style="{StaticResource SectionTitle}" />
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="18">
+                        <VerticalStackLayout Spacing="4">
+                            <Label Text="Código de lote" Style="{StaticResource FieldLabel}" />
+                            <Entry x:Name="LotCodeEntry" Style="{StaticResource FormEntry}" />
+                        </VerticalStackLayout>
+                        <VerticalStackLayout Grid.Column="1" Spacing="4">
+                            <Label Text="Proveedor" Style="{StaticResource FieldLabel}" />
+                            <Picker x:Name="SupplierPicker" Title="Sin proveedor" Style="{StaticResource FormPicker}" />
+                        </VerticalStackLayout>
+                    </Grid>
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="18">
+                        <VerticalStackLayout Spacing="4">
+                            <HorizontalStackLayout Spacing="8">
+                                <CheckBox x:Name="HasManufacturingDateCheck" CheckedChanged="HasManufacturingDateCheck_Changed" />
+                                <Label Text="Registrar fabricación" Style="{StaticResource FieldLabel}" VerticalOptions="Center" />
+                            </HorizontalStackLayout>
+                            <DatePicker x:Name="ManufacturingDatePicker" IsVisible="False" Style="{StaticResource FormDatePicker}" />
+                        </VerticalStackLayout>
+                        <VerticalStackLayout x:Name="ExpirationField" Grid.Column="1" Spacing="4">
+                            <Label Text="Fecha de caducidad *" Style="{StaticResource FieldLabel}" />
+                            <DatePicker x:Name="ExpirationDatePicker" Style="{StaticResource FormDatePicker}" />
+                        </VerticalStackLayout>
+                    </Grid>
+                    <VerticalStackLayout x:Name="UnitCostDisplay" Spacing="2">
+                        <Label Text="Costo unitario de recepción" Style="{StaticResource FieldLabel}" />
+                        <Label x:Name="UnitCostLabel" />
+                    </VerticalStackLayout>
+                    <Button x:Name="SaveLotButton" Text="Guardar datos del lote" Style="{StaticResource PrimaryButton}" HorizontalOptions="Start" Clicked="SaveLot_Clicked" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Border Style="{StaticResource Card}">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Ajustar cantidad del lote" Style="{StaticResource SectionTitle}" />
+                    <Label x:Name="CurrentQuantityLabel" FontAttributes="Bold" />
+                    <Grid ColumnDefinitions="*,2*" ColumnSpacing="18">
+                        <VerticalStackLayout Spacing="4">
+                            <Label Text="Ajuste *" Style="{StaticResource FieldLabel}" />
+                            <Entry x:Name="AdjustmentEntry" Style="{StaticResource FormEntry}" Keyboard="Numeric" />
+                        </VerticalStackLayout>
+                        <VerticalStackLayout Grid.Column="1" Spacing="4">
+                            <Label Text="Motivo *" Style="{StaticResource FieldLabel}" />
+                            <Entry x:Name="AdjustmentReasonEntry" Style="{StaticResource FormEntry}" />
+                        </VerticalStackLayout>
+                    </Grid>
+                    <Button Text="Aplicar ajuste" Style="{StaticResource SecondaryButton}" HorizontalOptions="Start" Clicked="ApplyAdjustment_Clicked" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Button Text="Abrir ficha del producto" Style="{StaticResource SecondaryButton}" HorizontalOptions="Start" Clicked="OpenProduct_Clicked" />
+            <Label x:Name="ErrorLabel" Style="{StaticResource ErrorText}" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

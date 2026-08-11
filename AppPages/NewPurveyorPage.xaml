@@ -2,13 +2,9 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="InventorySystem.AppPages.NewPurveyorPage"
-             Title="Nuevo proveedor">
+             Title="Agregar proveedor">
     <ScrollView>
-        <VerticalStackLayout Padding="28,24" Spacing="18" MaximumWidthRequest="920" HorizontalOptions="Center">
-            <VerticalStackLayout Spacing="4">
-                <Label Text="Registrar proveedor" Style="{StaticResource DesktopPageTitle}" />
-                <Label Text="Datos comerciales y de contacto." Style="{StaticResource DesktopPageSubtitle}" />
-            </VerticalStackLayout>
+        <VerticalStackLayout Style="{StaticResource StandardCreatePageContent}">
             <Border Style="{StaticResource Card}">
                 <VerticalStackLayout Spacing="14">
                     <Label Text="Información principal" Style="{StaticResource SectionTitle}" />
@@ -16,33 +12,43 @@
                     <Entry x:Name="CompanyEntry" Style="{StaticResource FormEntry}" />
                     <Grid ColumnDefinitions="*,*" ColumnSpacing="18">
                         <VerticalStackLayout Spacing="4">
-                            <Label Text="Nombre del contacto (opcional)" Style="{StaticResource FieldLabel}" />
+                            <Label Text="Nombre del contacto" Style="{StaticResource FieldLabel}" />
                             <Entry x:Name="ContactEntry" Style="{StaticResource FormEntry}" />
                         </VerticalStackLayout>
-                        <VerticalStackLayout Grid.Column="1" Spacing="4">
-                            <Label Text="Teléfono (opcional)" Style="{StaticResource FieldLabel}" />
-                            <Entry x:Name="PhoneEntry" Style="{StaticResource FormEntry}" Keyboard="Telephone" />
+                        <VerticalStackLayout Grid.Column="1" Spacing="6">
+                            <Label Text="Teléfono" Style="{StaticResource FieldLabel}" />
+                            <VerticalStackLayout x:Name="PhoneEntriesContainer" Spacing="6">
+                                <Entry x:Name="PhoneEntry" Style="{StaticResource FormEntry}" Keyboard="Telephone" TextChanged="ContactField_TextChanged" />
+                            </VerticalStackLayout>
+                            <Button x:Name="AddPhoneButton" Text="+ Agregar otro teléfono" IsVisible="False"
+                                    Style="{StaticResource SecondaryButton}" HorizontalOptions="Start" Clicked="AddPhone_Clicked" />
                         </VerticalStackLayout>
                     </Grid>
-                    <Label Text="Correo (opcional)" Style="{StaticResource FieldLabel}" />
-                    <Entry x:Name="EmailEntry" Style="{StaticResource FormEntry}" Keyboard="Email" />
+                    <VerticalStackLayout Spacing="6">
+                        <Label Text="Correo" Style="{StaticResource FieldLabel}" />
+                        <VerticalStackLayout x:Name="EmailEntriesContainer" Spacing="6">
+                            <Entry x:Name="EmailEntry" Style="{StaticResource FormEntry}" Keyboard="Email" TextChanged="ContactField_TextChanged" />
+                        </VerticalStackLayout>
+                        <Button x:Name="AddEmailButton" Text="+ Agregar otro correo" IsVisible="False"
+                                Style="{StaticResource SecondaryButton}" HorizontalOptions="Start" Clicked="AddEmail_Clicked" />
+                    </VerticalStackLayout>
                     <Grid ColumnDefinitions="*,*" ColumnSpacing="18">
                         <VerticalStackLayout Spacing="4">
-                            <Label Text="País (opcional)" Style="{StaticResource FieldLabel}" />
+                            <Label Text="País" Style="{StaticResource FieldLabel}" />
                             <Entry x:Name="CountryEntry" Style="{StaticResource FormEntry}" />
                         </VerticalStackLayout>
                         <VerticalStackLayout Grid.Column="1" Spacing="4">
-                            <Label Text="Estado (opcional)" Style="{StaticResource FieldLabel}" />
+                            <Label Text="Estado" Style="{StaticResource FieldLabel}" />
                             <Entry x:Name="StateEntry" Style="{StaticResource FormEntry}" />
                         </VerticalStackLayout>
                     </Grid>
                     <Grid ColumnDefinitions="*,*" ColumnSpacing="18">
                         <VerticalStackLayout Spacing="4">
-                            <Label Text="Dirección (opcional)" Style="{StaticResource FieldLabel}" />
+                            <Label Text="Dirección" Style="{StaticResource FieldLabel}" />
                             <Editor x:Name="AddressEntry" Style="{StaticResource FormEditor}" AutoSize="TextChanges" />
                         </VerticalStackLayout>
                         <VerticalStackLayout Grid.Column="1" Spacing="4">
-                            <Label Text="Notas (opcional)" Style="{StaticResource FieldLabel}" />
+                            <Label Text="Notas" Style="{StaticResource FieldLabel}" />
                             <Editor x:Name="NotesEntry" Style="{StaticResource FormEditor}" AutoSize="TextChanges" />
                         </VerticalStackLayout>
                     </Grid>

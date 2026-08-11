@@ -10,8 +10,6 @@
         <VerticalStackLayout Spacing="4">
             <Label Text="Escanear con cámara"
                    Style="{StaticResource DesktopPageTitle}" />
-            <Label Text="Coloca el código dentro del recuadro. Puedes cambiar de cámara cuando el equipo tenga más de una."
-                   Style="{StaticResource DesktopPageSubtitle}" />
         </VerticalStackLayout>
 
         <Border Grid.Row="1"

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="InventorySystem.AppPages.SalesHistoryPage"
+             Title="Registro de ventas">
+    <Grid RowDefinitions="Auto,*" Style="{StaticResource StandardHistoryPageLayout}">
+        <VerticalStackLayout Spacing="4">
+            <Label x:Name="ErrorLabel" Style="{StaticResource ErrorText}" />
+        </VerticalStackLayout>
+        <CollectionView x:Name="HistoryList" Grid.Row="1" SelectionMode="Single" SelectionChanged="HistoryList_SelectionChanged">
+            <CollectionView.EmptyView>
+                <Label Text="No hay operaciones registradas." Style="{StaticResource HelperText}" />
+            </CollectionView.EmptyView>
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <Border Style="{StaticResource ListRow}" Margin="0,4">
+                        <Grid ColumnDefinitions="2*,1.2*,1*,1*" ColumnSpacing="12">
+                            <VerticalStackLayout Spacing="2">
+                                <Label Text="{Binding Reference}" FontAttributes="Bold" />
+                                <Label Text="{Binding DisplayLineCount}" Style="{StaticResource HelperText}" />
+                            </VerticalStackLayout>
+                            <Label Grid.Column="1" Text="{Binding DisplayDate}" VerticalOptions="Center" />
+                            <Label Grid.Column="2" Text="{Binding DisplayStatus}" VerticalOptions="Center" />
+                            <Label Grid.Column="3" Text="{Binding DisplayTotal}" FontAttributes="Bold" HorizontalTextAlignment="End" VerticalOptions="Center" />
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+    </Grid>
+</ContentPage>

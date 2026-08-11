@@ -61,6 +61,6 @@ public partial class PurveyorFullPage : ContentPage
         SupplierList.SelectedItem = null;
         await Shell.Current.GoToAsync(
             nameof(PurveyorContactPage),
-            new Dictionary<string, object> { ["Supplier"] = supplier });
+            new Dictionary<string, object> { ["SupplierId"] = supplier.Id });
     }
 }

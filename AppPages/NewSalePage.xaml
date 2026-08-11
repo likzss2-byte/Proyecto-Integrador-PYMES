@@ -1,75 +1,118 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:templates="clr-namespace:InventorySystem.VisualElementsTemplates"
              x:Class="InventorySystem.AppPages.NewSalePage"
              Title="Nueva venta">
     <ScrollView>
-        <VerticalStackLayout Padding="28,24" Spacing="18" MaximumWidthRequest="940" HorizontalOptions="Center">
-            <VerticalStackLayout Spacing="4">
-                <Label Text="Venta / salida" Style="{StaticResource DesktopPageTitle}" />
-                <Label Text="Captura productos y confirma la salida." Style="{StaticResource DesktopPageSubtitle}" />
-            </VerticalStackLayout>
+        <VerticalStackLayout Style="{StaticResource StandardTransactionPageContent}">
+
             <Border Style="{StaticResource Card}">
                 <VerticalStackLayout Spacing="14">
-                    <Label Text="Agregar producto" Style="{StaticResource SectionTitle}" />
-                    <Label Text="Código de barras o SKU *" Style="{StaticResource FieldLabel}" />
-                    <Entry x:Name="ProductCodeEntry" Style="{StaticResource FormEntry}" Completed="AddLine_Clicked" />
-                    <Button Text="Escanear con cámara"
-                            Style="{StaticResource SecondaryButton}"
-                            HorizontalOptions="Start"
-                            Clicked="ScanCamera_Clicked" />
-                    <Grid ColumnDefinitions="*,*" ColumnSpacing="18">
-                        <VerticalStackLayout Spacing="4">
-                            <Label Text="Cantidad *" Style="{StaticResource FieldLabel}" />
-                            <Entry x:Name="QuantityEntry" Style="{StaticResource FormEntry}" Keyboard="Numeric" />
+                    <Border Style="{StaticResource FormSection}">
+                        <VerticalStackLayout Spacing="12">
+                            <Label Text="Agregar producto" Style="{StaticResource SectionTitle}" />
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                                <templates:SearchBar x:Name="ProductSearch" />
+                                <Button Grid.Column="1" Text="Escanear" Style="{StaticResource SecondaryButton}" Clicked="ScanCamera_Clicked" />
+                            </Grid>
+                            <CollectionView x:Name="ProductSearchResults"
+                                            HeightRequest="180"
+                                            IsVisible="False"
+                                            SelectionMode="Single"
+                                            SelectionChanged="ProductSearchResults_SelectionChanged">
+                                <CollectionView.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Style="{StaticResource ListRow}" Margin="0,2">
+                                            <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
+                                                <Label Text="{Binding Name}" FontAttributes="Bold" />
+                                                <Label Grid.Column="1" Text="{Binding DisplayStock}" />
+                                                <Label Grid.Row="1" Text="{Binding DisplayCode}" Style="{StaticResource HelperText}" />
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </CollectionView.ItemTemplate>
+                            </CollectionView>
+                            <Label x:Name="SelectedProductLabel" Style="{StaticResource InfoText}" IsVisible="False" />
+                            <Grid ColumnDefinitions="*,*" ColumnSpacing="18">
+                                <VerticalStackLayout Spacing="4">
+                                    <Label Text="Cantidad inicial" Style="{StaticResource FieldLabel}" />
+                                    <Entry x:Name="QuantityEntry" Style="{StaticResource FormEntry}" Keyboard="Numeric" Placeholder="1" />
+                                </VerticalStackLayout>
+                                <VerticalStackLayout Grid.Column="1" Spacing="4">
+                                    <Label Text="Precio unitario" Style="{StaticResource FieldLabel}" />
+                                    <Entry x:Name="UnitPriceEntry" Style="{StaticResource FormEntry}" Keyboard="Numeric" />
+                                </VerticalStackLayout>
+                            </Grid>
+                            <Button Text="Agregar producto"
+                                    Style="{StaticResource SecondaryButton}"
+                                    HorizontalOptions="Start"
+                                    Clicked="AddLine_Clicked" />
+                            <Label x:Name="ResultLabel" Style="{StaticResource ErrorText}" />
                         </VerticalStackLayout>
-                        <VerticalStackLayout Grid.Column="1" Spacing="4">
-                            <Label Text="Precio unitario (opcional)" Style="{StaticResource FieldLabel}" />
-                            <Entry x:Name="UnitPriceEntry" Style="{StaticResource FormEntry}" Keyboard="Numeric" />
-                            <Label Text="Vacío utiliza el precio configurado en el producto." Style="{StaticResource HelperText}" />
-                        </VerticalStackLayout>
-                    </Grid>
-                    <Button Text="Agregar producto" Style="{StaticResource SecondaryButton}" HorizontalOptions="Start" Clicked="AddLine_Clicked" />
-                    <Label x:Name="ResultLabel" Style="{StaticResource ErrorText}" />
+                    </Border>
 
-                    <CollectionView x:Name="LineList" HeightRequest="260">
+                    <CollectionView x:Name="LineList"
+                                    MinimumHeightRequest="64"
+                                    ItemSizingStrategy="MeasureAllItems"
+                                    VerticalScrollBarVisibility="Never">
                         <CollectionView.EmptyView>
                             <Label Text="La venta todavía no contiene productos." Style="{StaticResource HelperText}" />
                         </CollectionView.EmptyView>
                         <CollectionView.ItemTemplate>
                             <DataTemplate>
-                                <Border Style="{StaticResource Card}" Margin="0,4" Padding="12">
-                                    <Grid ColumnDefinitions="*,Auto">
-                                        <VerticalStackLayout>
+                                <Border Style="{StaticResource ListRow}" Margin="0,4">
+                                    <Grid ColumnDefinitions="1.4*,2*,Auto" ColumnSpacing="14">
+                                        <VerticalStackLayout Spacing="3">
                                             <Label Text="{Binding DisplayName}" FontAttributes="Bold" />
-                                            <Label Text="{Binding DisplayDetail}" Style="{StaticResource HelperText}" />
+                                            <Label Text="{Binding DisplayProductCode}" Style="{StaticResource HelperText}" />
+                                            <Label Text="{Binding UnitPrice, StringFormat='Precio {0:C}'}" Style="{StaticResource HelperText}" />
                                         </VerticalStackLayout>
-                                        <Button Grid.Column="1" Text="Quitar" Style="{StaticResource SecondaryButton}" Clicked="RemoveLine_Clicked" CommandParameter="{Binding .}" />
+                                        <VerticalStackLayout Grid.Column="1" Spacing="4">
+                                            <Label Text="Lote" Style="{StaticResource FieldLabel}" />
+                                            <Picker Title="Seleccione el lote del producto"
+                                                    ItemsSource="{Binding AvailableLots}"
+                                                    ItemDisplayBinding="{Binding DisplaySelection}"
+                                                    SelectedItem="{Binding SelectedLot, Mode=TwoWay}"
+                                                    Style="{StaticResource FormPicker}"
+                                                    SelectedIndexChanged="LineLot_Changed" />
+                                            <HorizontalStackLayout Spacing="6">
+                                                <Button Text="−" Style="{StaticResource SecondaryButton}" Padding="10,6"
+                                                        Clicked="DecreaseQuantity_Clicked" CommandParameter="{Binding .}" />
+                                                <Entry WidthRequest="90" Text="{Binding Quantity, Mode=TwoWay}" Keyboard="Numeric"
+                                                       Style="{StaticResource FormEntry}" TextChanged="LineQuantity_TextChanged" />
+                                                <Button Text="+" Style="{StaticResource SecondaryButton}" Padding="10,6"
+                                                        Clicked="IncreaseQuantity_Clicked" CommandParameter="{Binding .}" />
+                                                <Label Text="{Binding Subtotal, StringFormat='Subtotal {0:C}'}"
+                                                       VerticalOptions="Center" Margin="8,0,0,0" />
+                                            </HorizontalStackLayout>
+                                        </VerticalStackLayout>
+                                        <Button Grid.Column="2" Text="Quitar" Style="{StaticResource SecondaryButton}"
+                                                Clicked="RemoveLine_Clicked" CommandParameter="{Binding .}" VerticalOptions="Center" />
                                     </Grid>
                                 </Border>
                             </DataTemplate>
                         </CollectionView.ItemTemplate>
                     </CollectionView>
+
                     <Label x:Name="TotalLabel" Text="Total: $0.00" FontSize="18" FontAttributes="Bold" />
-                    <Label Text="Notas (opcional)" Style="{StaticResource FieldLabel}" />
+                    <Label Text="Notas" Style="{StaticResource FieldLabel}" />
                     <Editor x:Name="NotesEntry" Style="{StaticResource FormEditor}" AutoSize="TextChanges" />
-                    <Border Style="{StaticResource ExpiredCard}">
+                    <Border x:Name="ExpiredAuthorizationPanel" Style="{StaticResource ExpiredCard}" IsVisible="False">
                         <HorizontalStackLayout Spacing="8">
-                            <CheckBox x:Name="AllowExpiredLotsCheck" />
+                            <CheckBox x:Name="AllowExpiredLotsCheck" CheckedChanged="AllowExpiredLotsCheck_Changed" />
                             <VerticalStackLayout VerticalOptions="Center">
-                                <Label Text="Autorizar despacho de lotes caducados" Style="{StaticResource FieldLabel}" />
-                                <Label Text="Solo se utiliza si no hay stock suficiente en lotes vigentes y exige una confirmación adicional." Style="{StaticResource HelperText}" />
+                                <Label Text="Entiendo que esta venta incluye producto de un lote caducado" Style="{StaticResource FieldLabel}" />
+                                <Label Text="Debes marcar esta casilla para confirmar la venta." Style="{StaticResource HelperText}" />
                             </VerticalStackLayout>
                         </HorizontalStackLayout>
                     </Border>
-                    <Button x:Name="ConfirmSaleButton" Text="Confirmar venta" Style="{StaticResource PrimaryButton}" HorizontalOptions="Start" Clicked="ConfirmSale_Clicked" />
-                    <Border x:Name="CancellationPanel" Style="{StaticResource ExpiredCard}" IsVisible="False">
-                        <VerticalStackLayout Spacing="8">
-                            <Label Text="Motivo de cancelación *" Style="{StaticResource FieldLabel}" />
-                            <Entry x:Name="CancelReasonEntry" Style="{StaticResource FormEntry}" />
-                            <Button x:Name="CancelSaleButton" Text="Cancelar última venta" Style="{StaticResource DangerButton}" HorizontalOptions="Start" Clicked="CancelSale_Clicked" />
-                        </VerticalStackLayout>
-                    </Border>
+                    <Button x:Name="ConfirmSaleButton"
+                            Text="Confirmar venta"
+                            IsEnabled="False"
+                            Style="{StaticResource PrimaryButton}"
+                            HorizontalOptions="Start"
+                            Clicked="ConfirmSale_Clicked" />
                 </VerticalStackLayout>
             </Border>
         </VerticalStackLayout>

@@ -24,7 +24,7 @@ public partial class AddNewMenu : ContentView
 
 	private async void NewOrder_Clicked(object sender, EventArgs e)
 	{
-		await Shell.Current.GoToAsync("//NewOrderPage");
+		await Shell.Current.GoToAsync("//NewEntryPage");
 	}
 
 	private async void NewSale_Clicked(object sender, EventArgs e)

@@ -4,10 +4,8 @@
              xmlns:templates="clr-namespace:InventorySystem.VisualElementsTemplates"
              x:Class="InventorySystem.AppPages.PurveyorFullPage"
              Title="Proveedores">
-    <Grid RowDefinitions="Auto,Auto,*,Auto" Padding="28,24,28,0" MaximumWidthRequest="1080" HorizontalOptions="Center">
+    <Grid RowDefinitions="Auto,Auto,*,Auto" Style="{StaticResource StandardDirectoryPageLayout}">
         <VerticalStackLayout Spacing="4">
-            <Label Text="Proveedores" Style="{StaticResource DesktopPageTitle}" />
-            <Label Text="Directorio de proveedores." Style="{StaticResource DesktopPageSubtitle}" />
         </VerticalStackLayout>
         <SearchBar x:Name="SupplierSearch" Grid.Row="1" Margin="0,14,0,10" Placeholder="Buscar proveedor" TextChanged="SupplierSearch_TextChanged" />
         <CollectionView x:Name="SupplierList" Grid.Row="2" SelectionMode="Single" SelectionChanged="SupplierList_SelectionChanged">

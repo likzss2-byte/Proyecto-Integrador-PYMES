@@ -176,7 +176,7 @@ public sealed class AndroidBarcodeCameraScannerService : Java.Lang.Object, IBarc
 
     private void StartCameraThread()
     {
-        _cameraThread = new HandlerThread("InventarioPymesBarcodeCamera");
+        _cameraThread = new HandlerThread("InventarioBarcodeCamera");
         _cameraThread.Start();
         _cameraHandler = new AHandler(_cameraThread.Looper!);
     }

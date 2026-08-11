@@ -17,7 +17,6 @@
 		<UseMaui>true</UseMaui>
 		<MauiVersion>10.0.60</MauiVersion>
 		<SingleProject>true</SingleProject>
-		<SingleProject>true</SingleProject>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 
@@ -29,7 +28,7 @@
 		       <MauiXaml Update="MyPage.xaml" Inflator="Runtime" /> (force runtime inflation) -->
 
 		<!-- Display name -->
-		<ApplicationTitle>InventorySystem</ApplicationTitle>
+		<ApplicationTitle>Inventario</ApplicationTitle>
 
 		<!-- App Identifier -->
 		<ApplicationId>com.companyname.inventorysystem</ApplicationId>
@@ -87,8 +86,8 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <Compile Update="AppPages\NewOrderPage.xaml.cs">
-	    <DependentUpon>NewOrderPage.xaml</DependentUpon>
+	  <Compile Update="AppPages\NewEntryPage.xaml.cs">
+	    <DependentUpon>NewEntryPage.xaml</DependentUpon>
 	  </Compile>
 	  <Compile Update="AppPages\NewItemPage.xaml.cs">
 	    <DependentUpon>NewItemPage.xaml</DependentUpon>
@@ -96,16 +95,10 @@
 	  <Compile Update="AppPages\LoadingScreen.xaml.cs">
 	    <DependentUpon>LoadingScreen.xaml</DependentUpon>
 	  </Compile>
-	  <Compile Update="VisualElementsTemplates\HomePageContainer.xaml.cs">
-	    <DependentUpon>HomePageContainer.xaml</DependentUpon>
-	  </Compile>
-	  <Compile Update="VisualElementsTemplates\NewItemMenu.xaml.cs">
-	    <DependentUpon>NewItemMenu.xaml</DependentUpon>
-	  </Compile>
 	</ItemGroup>
 
 	<ItemGroup>
-	  <MauiXaml Update="AppPages\NewOrderPage.xaml">
+	  <MauiXaml Update="AppPages\NewEntryPage.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>
 	  <MauiXaml Update="AppPages\NewItemPage.xaml">
@@ -120,9 +113,6 @@
 	  <MauiXaml Update="AppPages\LoadingScreen.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>
-	  <MauiXaml Update="AppPages\LogIn.xaml">
-	    <Generator>MSBuild:Compile</Generator>
-	  </MauiXaml>
 	  <MauiXaml Update="AppPages\NewPurveyorPage.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>
@@ -135,37 +125,16 @@
 	  <MauiXaml Update="AppPages\PurveyorFullPage.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>
-	  <MauiXaml Update="AppPages\SignIn.xaml">
-	    <Generator>MSBuild:Compile</Generator>
-	  </MauiXaml>
 	  <MauiXaml Update="VisualElementsTemplates\AddNewMenu.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>
 	  <MauiXaml Update="VisualElementsTemplates\Dock.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>
-	  <MauiXaml Update="VisualElementsTemplates\HomePageMenu.xaml">
-	    <Generator>MSBuild:Compile</Generator>
-	  </MauiXaml>
-	  <MauiXaml Update="VisualElementsTemplates\ItemInventoryView.xaml">
-	    <Generator>MSBuild:Compile</Generator>
-	  </MauiXaml>
-	  <MauiXaml Update="VisualElementsTemplates\HomePageContainer.xaml">
-	    <Generator>MSBuild:Compile</Generator>
-	  </MauiXaml>
 	  <MauiXaml Update="VisualElementsTemplates\LoadingIndicator.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>
-	  <MauiXaml Update="VisualElementsTemplates\NewItemMenu.xaml">
-	    <Generator>MSBuild:Compile</Generator>
-	  </MauiXaml>
-	  <MauiXaml Update="VisualElementsTemplates\Notification.xaml">
-	    <Generator>MSBuild:Compile</Generator>
-	  </MauiXaml>
 	  <MauiXaml Update="VisualElementsTemplates\SearchBar.xaml">
-	    <Generator>MSBuild:Compile</Generator>
-	  </MauiXaml>
-	  <MauiXaml Update="VisualElementsTemplates\SortButton.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>
 	</ItemGroup>

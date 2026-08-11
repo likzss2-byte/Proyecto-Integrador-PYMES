@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="InventorySystem.AppPages.LotsPage"
+             Title="Lotes">
+    <Grid RowDefinitions="Auto,Auto,*" Style="{StaticResource StandardDirectoryPageLayout}">
+        <VerticalStackLayout Spacing="4">
+            <Label x:Name="ErrorLabel" Style="{StaticResource ErrorText}" IsVisible="False" />
+        </VerticalStackLayout>
+
+        <SearchBar x:Name="LotSearch"
+                   Grid.Row="1"
+                   Margin="0,14,0,10"
+                   Placeholder="Producto, código de barras, lote o proveedor"
+                   TextChanged="LotSearch_TextChanged" />
+
+        <CollectionView x:Name="LotList"
+                        Grid.Row="2"
+                        SelectionMode="Single"
+                        SelectionChanged="LotList_SelectionChanged">
+            <CollectionView.EmptyView>
+                <Label Text="No hay lotes que coincidan con la búsqueda."
+                       HorizontalOptions="Center"
+                       VerticalOptions="Center"
+                       Style="{StaticResource HelperText}" />
+            </CollectionView.EmptyView>
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <Border Style="{StaticResource ListRow}" Margin="0,4" Padding="12">
+                        <Grid ColumnDefinitions="2*,1.2*,1.2*,1.2*" ColumnSpacing="12">
+                            <VerticalStackLayout Spacing="2">
+                                <Label Text="{Binding ProductName}" FontAttributes="Bold" />
+                                <Label Text="{Binding ProductCode}" Style="{StaticResource HelperText}" />
+                            </VerticalStackLayout>
+                            <VerticalStackLayout Grid.Column="1" Spacing="2">
+                                <Label Text="{Binding LotCode, StringFormat='Lote {0}'}" />
+                                <Label Text="{Binding SupplierName}" Style="{StaticResource HelperText}" />
+                            </VerticalStackLayout>
+                            <VerticalStackLayout Grid.Column="2" Spacing="2">
+                                <Label Text="{Binding Quantity, StringFormat='Disponible {0:0.###}'}" />
+                                <Label Text="{Binding DisplayExpiration, StringFormat='Caducidad {0}'}" Style="{StaticResource HelperText}" />
+                            </VerticalStackLayout>
+                            <Label Grid.Column="3"
+                                   Text="{Binding EffectiveStatus}"
+                                   HorizontalTextAlignment="End"
+                                   VerticalOptions="Center" />
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+    </Grid>
+</ContentPage>

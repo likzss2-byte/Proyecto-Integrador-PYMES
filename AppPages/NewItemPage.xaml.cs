@@ -9,6 +9,7 @@ namespace InventorySystem.AppPages;
 public partial class NewItemPage : ContentPage
 {
     private readonly ProductRepository _products;
+    private readonly SupplierRepository _suppliers;
     private readonly ProductLookupService _lookup;
     private readonly BarcodeScannerService _scanner;
     private readonly BarcodeScannerCoordinator _cameraScanner;
@@ -18,6 +19,7 @@ public partial class NewItemPage : ContentPage
 
     public NewItemPage(
         ProductRepository products,
+        SupplierRepository suppliers,
         ProductLookupService lookup,
         BarcodeScannerService scanner,
         BarcodeScannerCoordinator cameraScanner,
@@ -26,6 +28,7 @@ public partial class NewItemPage : ContentPage
     {
         InitializeComponent();
         _products = products;
+        _suppliers = suppliers;
         _lookup = lookup;
         _scanner = scanner;
         _cameraScanner = cameraScanner;
@@ -33,7 +36,6 @@ public partial class NewItemPage : ContentPage
         _businesses = businesses;
         UnitPicker.SelectedIndex = 0;
         ExpirationModePicker.SelectedIndex = 0;
-        InitialExpirationDatePicker.Date = DateTime.Today.AddDays(30);
     }
 
     protected override async void OnAppearing()
@@ -42,6 +44,7 @@ public partial class NewItemPage : ContentPage
         try
         {
             _businessId = (await _businesses.GetDefaultAsync()).Id;
+            ProductSupplierPicker.ItemsSource = (await _suppliers.SearchAsync(_businessId)).ToList();
         }
         catch (Exception error)
         {
@@ -113,8 +116,18 @@ public partial class NewItemPage : ContentPage
             var result = await _lookup.LookupAsync(_businessId, code);
             if (result.LocalProduct is not null)
             {
-                Populate(result.LocalProduct);
-                LookupMessage.Text = "El producto ya existe en el inventario local.";
+                LookupMessage.Text = "El producto ya existe. Para modificarlo debes abrir su ficha desde Inventario.";
+                var open = await DisplayAlertAsync(
+                    "Producto existente",
+                    $"{result.LocalProduct.Name} ya está registrado. ¿Quieres abrir su ficha?",
+                    "Abrir ficha",
+                    "Cancelar");
+                if (open)
+                {
+                    await Shell.Current.GoToAsync(
+                        nameof(ItemFullPage),
+                        new Dictionary<string, object> { ["ProductId"] = result.LocalProduct.Id });
+                }
                 return;
             }
 
@@ -158,9 +171,8 @@ public partial class NewItemPage : ContentPage
             var expirationMode = ExpirationModePicker.SelectedIndex == 1
                 ? ExpirationMode.Tracked
                 : ExpirationMode.NotApplicable;
-            var initialStock = ParseOptionalDecimal(InitialStockEntry.Text, "El inventario inicial no es válido.") ?? 0m;
             var input = new ProductInput(
-                SkuEntry.Text ?? string.Empty,
+                null,
                 BarcodeEntry.Text,
                 NameEntry.Text ?? string.Empty,
                 DescriptionEntry.Text,
@@ -169,12 +181,15 @@ public partial class NewItemPage : ContentPage
                 ParseOptionalDecimal(MinimumStockEntry.Text, "El stock mínimo no es válido.") ?? 0m,
                 ParseOptionalDecimal(SalePriceEntry.Text, "El precio de venta no es válido.") ?? 0m,
                 ActiveSwitch.IsToggled,
-                expirationMode,
-                expirationMode == ExpirationMode.Tracked && initialStock > 0
-                    ? DateOnly.FromDateTime(InitialExpirationDatePicker.Date ?? DateTime.Today)
-                    : null,
-                InitialLotCodeEntry.Text);
-            var saved = await _products.SaveAsync(_businessId, input, initialStock);
+                expirationMode);
+            var saved = await _products.SaveAsync(_businessId, input);
+            if (ProductSupplierPicker.SelectedItem is Supplier supplier)
+            {
+                await _suppliers.LinkProductAsync(
+                    _businessId,
+                    new ProductSupplierInput(saved.Id, supplier.Id, null, null));
+            }
+
             await DisplayAlertAsync("Producto", $"{saved.Name} se guardó correctamente.", "Aceptar");
             ClearForm();
         }
@@ -188,27 +203,6 @@ public partial class NewItemPage : ContentPage
         }
     }
 
-    private void ExpirationModePicker_Changed(object? sender, EventArgs e) =>
-        ExpirationDetailsPanel.IsVisible = ExpirationModePicker.SelectedIndex == 1;
-
-    private void Populate(Product product)
-    {
-        SkuEntry.Text = product.Sku;
-        BarcodeEntry.Text = product.Barcode;
-        NameEntry.Text = product.Name;
-        BrandEntry.Text = product.Brand;
-        DescriptionEntry.Text = product.Description;
-        UnitPicker.SelectedIndex = (int)product.UnitOfMeasure;
-        ExpirationModePicker.SelectedIndex = product.ExpirationMode switch
-        {
-            ExpirationMode.Tracked => 1,
-            ExpirationMode.NotApplicable => 2,
-            _ => 0
-        };
-        MinimumStockEntry.Text = product.MinimumStock.ToString(CultureInfo.CurrentCulture);
-        SalePriceEntry.Text = product.SalePrice.ToString(CultureInfo.CurrentCulture);
-        ActiveSwitch.IsToggled = product.Active;
-    }
 
     private void Populate(ExternalProduct product)
     {
@@ -216,37 +210,28 @@ public partial class NewItemPage : ContentPage
         NameEntry.Text = product.Name;
         BrandEntry.Text = product.Brand;
         DescriptionEntry.Text = product.Description;
-        if (string.IsNullOrWhiteSpace(SkuEntry.Text))
-        {
-            var segment = new string(product.Name.ToUpperInvariant().Where(char.IsLetterOrDigit).Take(8).ToArray());
-            SkuEntry.Text = $"EXT-{(segment.Length == 0 ? "ITEM" : segment)}-{Guid.NewGuid().ToString("N")[..4].ToUpperInvariant()}";
-        }
     }
 
     private void ClearForm()
     {
         LookupCode.Text = string.Empty;
         LookupMessage.Text = string.Empty;
-        SkuEntry.Text = string.Empty;
         BarcodeEntry.Text = string.Empty;
         NameEntry.Text = string.Empty;
         BrandEntry.Text = string.Empty;
         DescriptionEntry.Text = string.Empty;
         UnitPicker.SelectedIndex = 0;
         ExpirationModePicker.SelectedIndex = 0;
-        InitialStockEntry.Text = string.Empty;
         MinimumStockEntry.Text = string.Empty;
         SalePriceEntry.Text = string.Empty;
-        InitialLotCodeEntry.Text = string.Empty;
-        InitialExpirationDatePicker.Date = DateTime.Today.AddDays(30);
         ActiveSwitch.IsToggled = true;
+        ProductSupplierPicker.SelectedItem = null;
         ClearValidationMessages();
         _readGuard.Reset("registro-producto");
     }
 
     private void ClearValidationMessages()
     {
-        SkuErrorLabel.Text = string.Empty;
         BarcodeErrorLabel.Text = string.Empty;
         NameErrorLabel.Text = string.Empty;
         NumericErrorLabel.Text = string.Empty;
@@ -256,11 +241,7 @@ public partial class NewItemPage : ContentPage
 
     private void ShowValidationError(string message)
     {
-        if (message.Contains("SKU", StringComparison.OrdinalIgnoreCase))
-        {
-            SkuErrorLabel.Text = message;
-        }
-        else if (message.Contains("código de barras", StringComparison.OrdinalIgnoreCase))
+        if (message.Contains("código de barras", StringComparison.OrdinalIgnoreCase))
         {
             BarcodeErrorLabel.Text = message;
         }

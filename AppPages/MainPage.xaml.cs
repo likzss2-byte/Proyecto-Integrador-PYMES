@@ -44,8 +44,13 @@ public partial class MainPage : ContentPage
             MinimumStockCount.Text = dashboard.Summary.MinimumStockProducts.ToString();
             ExpiringCount.Text = dashboard.Summary.ExpiringLots.ToString();
             ExpiredCount.Text = dashboard.Summary.ExpiredLots.ToString();
-            PendingOrdersCount.Text = dashboard.Summary.PendingOrders.ToString();
-            PartialOrdersCount.Text = dashboard.Summary.PartiallyReceivedOrders.ToString();
+            MinimumStockSummaryCard.IsVisible = dashboard.MinimumStock.Count > 0;
+            ExpiringSummaryCard.IsVisible = dashboard.ExpiringLots.Count > 0;
+            ExpiredSummaryCard.IsVisible = dashboard.ExpiredLots.Count > 0;
+            MinimumStockSection.IsVisible = dashboard.MinimumStock.Count > 0;
+            ExpiringSection.IsVisible = dashboard.ExpiringLots.Count > 0;
+            ExpiredSection.IsVisible = dashboard.ExpiredLots.Count > 0;
+            EmptyDashboardLabel.IsVisible = dashboard.MinimumStock.Count == 0 && dashboard.ExpiringLots.Count == 0 && dashboard.ExpiredLots.Count == 0;
         }
         catch (Exception error)
         {

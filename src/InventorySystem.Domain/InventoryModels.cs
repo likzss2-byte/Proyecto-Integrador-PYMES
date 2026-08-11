@@ -87,7 +87,8 @@ public sealed class Product
 {
     public long Id { get; set; }
     public long BusinessId { get; set; }
-    public string Sku { get; set; } = string.Empty;
+    // Campo legado conservado únicamente para compatibilidad con bases anteriores. No se usa en la UI ni en búsquedas.
+    public string? Sku { get; set; }
     public string? Barcode { get; set; }
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
@@ -103,7 +104,7 @@ public sealed class Product
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 
-    public string DisplayCode => string.IsNullOrWhiteSpace(Barcode) ? Sku : Barcode;
+    public string DisplayCode => string.IsNullOrWhiteSpace(Barcode) ? $"ID {Id}" : Barcode;
     public string DisplayStock => UnitOfMeasure switch
     {
         UnitOfMeasure.Kilogram => $"{Stock:0.###} kg",
@@ -116,6 +117,9 @@ public sealed class InventoryLot
 {
     public long Id { get; set; }
     public long ProductId { get; set; }
+    public string ProductName { get; set; } = string.Empty;
+    public string? ProductCode { get; set; }
+    public ExpirationMode ProductExpirationMode { get; set; }
     public long? SupplierId { get; set; }
     public string? SupplierName { get; set; }
     public string? LotCode { get; set; }
@@ -132,13 +136,32 @@ public sealed class InventoryLot
     public DateTime UpdatedAt { get; set; }
 
     public int? DaysUntilExpiration => ExpirationDate?.DayNumber - DateOnly.FromDateTime(DateTime.Today).DayNumber;
+    public bool IsExpired => ProductExpirationMode == ExpirationMode.Tracked &&
+        ExpirationDate.HasValue &&
+        ExpirationDate.Value < DateOnly.FromDateTime(DateTime.Today);
+    public string DisplayExpiration => ProductExpirationMode == ExpirationMode.NotApplicable
+        ? "Sin caducidad"
+        : ExpirationDate.HasValue
+            ? ExpirationDate.Value.ToString("dd/MM/yyyy", CultureInfo.CurrentCulture)
+            : "Sin fecha de caducidad";
+    public string DisplaySelection => $"Lote {LotCode ?? "Sin código"} · Disponible {Quantity:0.###} · " +
+        (ProductExpirationMode == ExpirationMode.NotApplicable
+            ? "Sin caducidad"
+            : ExpirationDate.HasValue
+                ? $"Caduca {ExpirationDate:dd/MM/yyyy}"
+                : "Sin fecha de caducidad") +
+        (IsExpired ? " · CADUCADO" : string.Empty);
     public string EffectiveStatus => Quantity <= 0
         ? "Agotado"
-        : DaysUntilExpiration < 0
-            ? "Caducado"
-            : DaysUntilExpiration <= 7
-                ? "Próximo a caducar"
-                : "Vigente";
+        : ProductExpirationMode != ExpirationMode.Tracked
+            ? "Vigente"
+            : !ExpirationDate.HasValue
+                ? "Falta caducidad"
+                : DaysUntilExpiration < 0
+                    ? "Caducado"
+                    : DaysUntilExpiration <= 7
+                        ? "Próximo a caducar"
+                        : "Vigente";
 }
 
 public sealed record ExpirationAlert(
@@ -182,6 +205,8 @@ public sealed class Supplier
     public string? ContactName { get; set; }
     public string? Phone { get; set; }
     public string? Email { get; set; }
+    public IReadOnlyList<string> Phones { get; set; } = Array.Empty<string>();
+    public IReadOnlyList<string> Emails { get; set; } = Array.Empty<string>();
     public string? Country { get; set; }
     public string? State { get; set; }
     public string? Address { get; set; }
@@ -218,6 +243,16 @@ public sealed class InventoryDocument
     public DateTime? ConfirmedAt { get; set; }
     public DateTime? CancelledAt { get; set; }
     public List<InventoryDocumentLine> Lines { get; set; } = [];
+
+    public string DisplayStatus => Status switch
+    {
+        InventoryDocumentStatus.Draft => "Borrador",
+        InventoryDocumentStatus.Confirmed => "Confirmada",
+        _ => "Cancelada"
+    };
+    public string DisplayDate => (ConfirmedAt ?? CreatedAt).ToLocalTime().ToString("dd/MM/yyyy HH:mm", CultureInfo.CurrentCulture);
+    public string DisplayTotal => Total.ToString("C", CultureInfo.CurrentCulture);
+    public string DisplayLineCount => $"{Lines.Count} renglón(es)";
 }
 
 public sealed class InventoryDocumentLine
@@ -225,12 +260,17 @@ public sealed class InventoryDocumentLine
     public long Id { get; set; }
     public long DocumentId { get; set; }
     public long ProductId { get; set; }
+    public string ProductName { get; set; } = string.Empty;
+    public long? LotId { get; set; }
     public decimal Quantity { get; set; }
     public decimal UnitPrice { get; set; }
     public string? LotCode { get; set; }
     public DateOnly? ManufacturingDate { get; set; }
     public DateOnly? ExpirationDate { get; set; }
     public decimal Subtotal => decimal.Round(Quantity * UnitPrice, 2, MidpointRounding.AwayFromZero);
+    public string DisplayLot => $"Lote {LotCode ?? "Sin código"}" +
+        (ExpirationDate.HasValue ? $" · Caduca {ExpirationDate:dd/MM/yyyy}" : " · Sin caducidad");
+    public string DisplayAmounts => $"{Quantity:0.###} × {UnitPrice:C} = {Subtotal:C}";
 }
 
 public sealed class InventoryMovement
@@ -399,7 +439,8 @@ public sealed class InventoryCountLine
     public long CountId { get; set; }
     public long ProductId { get; set; }
     public string Code { get; set; } = string.Empty;
-    public string Sku { get; set; } = string.Empty;
+    // Campo legado conservado únicamente para compatibilidad con bases anteriores. No se usa en la UI ni en búsquedas.
+    public string? Sku { get; set; }
     public string? Barcode { get; set; }
     public string ProductName { get; set; } = string.Empty;
     public string? Brand { get; set; }
@@ -458,7 +499,7 @@ public sealed record InventoryCountSummary(
     int Pending);
 
 public sealed record ProductInput(
-    string Sku,
+    string? Sku,
     string? Barcode,
     string Name,
     string? Description,
@@ -480,7 +521,9 @@ public sealed record SupplierInput(
     string? State,
     string? Address,
     string? Notes,
-    bool Active = true);
+    bool Active = true,
+    IReadOnlyList<string>? Phones = null,
+    IReadOnlyList<string>? Emails = null);
 
 public sealed record ProductSupplierInput(
     long ProductId,
@@ -495,7 +538,8 @@ public sealed record InventoryDocumentLineInput(
     decimal UnitPrice,
     string? LotCode = null,
     DateOnly? ManufacturingDate = null,
-    DateOnly? ExpirationDate = null);
+    DateOnly? ExpirationDate = null,
+    long? LotId = null);
 
 public sealed record InventoryAdjustmentInput(long ProductId, decimal Quantity, string Reason);
 
@@ -518,6 +562,18 @@ public sealed record InventoryLotReceiptInput(
     decimal? UnitCost = null,
     long? PurchaseOrderId = null,
     long? ReceiptId = null);
+
+public sealed record InventoryLotUpdateInput(
+    string? LotCode,
+    long? SupplierId,
+    DateOnly? ManufacturingDate,
+    DateOnly? ExpirationDate,
+    decimal? UnitCost);
+
+public sealed record InventoryLotAdjustmentInput(
+    long LotId,
+    decimal QuantityChange,
+    string Reason);
 
 public sealed record PurchaseOrderInput(
     long? SupplierId,
@@ -614,11 +670,6 @@ public static class InventoryRules
 
     public static void ValidateProduct(ProductInput input)
     {
-        if (string.IsNullOrWhiteSpace(input.Sku))
-        {
-            throw new InventoryRuleException("El SKU es obligatorio.");
-        }
-
         if (string.IsNullOrWhiteSpace(input.Name))
         {
             throw new InventoryRuleException("El nombre del producto es obligatorio.");
@@ -647,9 +698,10 @@ public static class InventoryRules
             throw new InventoryRuleException("La empresa o razón social es obligatoria.");
         }
 
-        if (!string.IsNullOrWhiteSpace(input.Email) && !input.Email.Contains('@', StringComparison.Ordinal))
+        var emails = input.Emails ?? (string.IsNullOrWhiteSpace(input.Email) ? Array.Empty<string>() : new[] { input.Email });
+        if (emails.Any(email => !string.IsNullOrWhiteSpace(email) && !email.Contains('@', StringComparison.Ordinal)))
         {
-            throw new InventoryRuleException("El correo del proveedor no es válido.");
+            throw new InventoryRuleException("Uno de los correos del proveedor no es válido.");
         }
     }
 }

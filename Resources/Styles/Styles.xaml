@@ -605,4 +605,35 @@
         <Setter Property="Stroke" Value="{AppThemeBinding Light=#E5BBB6, Dark=#714B46}" />
     </Style>
 
+
+    <!-- Estándares de layout por familia de pantallas. -->
+	<Style x:Key="StandardDetailPageContent" TargetType="VerticalStackLayout">
+		<Setter Property="Spacing" Value="18" />
+        <Setter Property="MaximumWidthRequest" Value="980" />
+        <Setter Property="HorizontalOptions" Value="Fill" />
+    </Style>
+
+	<Style x:Key="StandardCreatePageContent" TargetType="VerticalStackLayout">
+		<Setter Property="Spacing" Value="18" />
+        <Setter Property="MaximumWidthRequest" Value="980" />
+        <Setter Property="HorizontalOptions" Value="Fill" />
+    </Style>
+
+	<Style x:Key="StandardTransactionPageContent" TargetType="VerticalStackLayout">
+		<Setter Property="Spacing" Value="18" />
+        <Setter Property="MaximumWidthRequest" Value="1280" />
+        <Setter Property="HorizontalOptions" Value="Fill" />
+    </Style>
+
+	<Style x:Key="StandardDirectoryPageLayout" TargetType="Grid">
+		<Setter Property="MaximumWidthRequest" Value="1080" />
+        <Setter Property="HorizontalOptions" Value="Fill" />
+    </Style>
+
+	<Style x:Key="StandardHistoryPageLayout" TargetType="Grid">
+		<Setter Property="RowSpacing" Value="14" />
+        <Setter Property="MaximumWidthRequest" Value="1050" />
+        <Setter Property="HorizontalOptions" Value="Fill" />
+    </Style>
+
 </ResourceDictionary>

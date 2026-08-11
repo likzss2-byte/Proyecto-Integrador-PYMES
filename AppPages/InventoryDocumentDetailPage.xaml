@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="InventorySystem.AppPages.InventoryDocumentDetailPage"
+             Title="Detalle de operación">
+    <ScrollView>
+        <VerticalStackLayout Padding="28,24" Spacing="18" MaximumWidthRequest="1000" HorizontalOptions="Center">
+            <VerticalStackLayout Spacing="4">
+                <Label x:Name="TitleLabel" Style="{StaticResource DesktopPageTitle}" />
+                <Label x:Name="ReferenceLabel" Style="{StaticResource DesktopPageSubtitle}" />
+            </VerticalStackLayout>
+
+            <Border Style="{StaticResource Card}">
+                <Grid ColumnDefinitions="*,*,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="18" RowSpacing="10">
+                    <VerticalStackLayout>
+                        <Label Text="Fecha" Style="{StaticResource FieldLabel}" />
+                        <Label x:Name="DateLabel" />
+                    </VerticalStackLayout>
+                    <VerticalStackLayout Grid.Column="1">
+                        <Label Text="Estado" Style="{StaticResource FieldLabel}" />
+                        <Label x:Name="StatusLabel" FontAttributes="Bold" />
+                    </VerticalStackLayout>
+                    <VerticalStackLayout Grid.Column="2">
+                        <Label Text="Total" Style="{StaticResource FieldLabel}" />
+                        <Label x:Name="TotalLabel" FontAttributes="Bold" />
+                    </VerticalStackLayout>
+                    <VerticalStackLayout x:Name="SupplierField" Grid.Row="1" Grid.ColumnSpan="3" IsVisible="False">
+                        <Label Text="Proveedor" Style="{StaticResource FieldLabel}" />
+                        <Label x:Name="SupplierLabel" />
+                    </VerticalStackLayout>
+                    <VerticalStackLayout Grid.Row="2" Grid.ColumnSpan="3">
+                        <Label Text="Notas" Style="{StaticResource FieldLabel}" />
+                        <Label x:Name="NotesLabel" />
+                    </VerticalStackLayout>
+                </Grid>
+            </Border>
+
+            <Border Style="{StaticResource Card}">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Productos" Style="{StaticResource SectionTitle}" />
+                    <CollectionView x:Name="LineList" HeightRequest="360" SelectionMode="Single" SelectionChanged="LineList_SelectionChanged">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate>
+                                <Border Style="{StaticResource ListRow}" Margin="0,3">
+                                    <Grid ColumnDefinitions="1.6*,1.4*,1.2*" ColumnSpacing="12">
+                                        <Label Text="{Binding ProductName}" FontAttributes="Bold" VerticalOptions="Center" />
+                                        <VerticalStackLayout Grid.Column="1" Spacing="2">
+                                            <Label Text="{Binding DisplayLot}" />
+                                            <Label Text="{Binding LotId, StringFormat='ID lote {0}'}" Style="{StaticResource HelperText}" />
+                                        </VerticalStackLayout>
+                                        <Label Grid.Column="2" Text="{Binding DisplayAmounts}" HorizontalTextAlignment="End" VerticalOptions="Center" />
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </VerticalStackLayout>
+            </Border>
+
+            <Border x:Name="CancellationPanel" Style="{StaticResource ExpiredCard}" IsVisible="False">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Cancelar operación" Style="{StaticResource SectionTitle}" />
+                    <Label Text="Las existencias se revertirán sobre los lotes originales. Esta acción queda reflejada en el historial." Style="{StaticResource HelperText}" />
+                    <Label Text="Motivo *" Style="{StaticResource FieldLabel}" />
+                    <Entry x:Name="CancelReasonEntry" Style="{StaticResource FormEntry}" />
+                    <Button x:Name="CancelButton"
+                            Text="Cancelar operación"
+                            Style="{StaticResource DangerButton}"
+                            HorizontalOptions="Start"
+                            Clicked="Cancel_Clicked" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Label x:Name="ErrorLabel" Style="{StaticResource ErrorText}" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

@@ -1,0 +1,11 @@
+C:\Users\Espon\Downloads\Proyecto-Integrador-PYMES-main\src\InventorySystem.Domain\bin\Debug\net10.0\InventorySystem.Domain.deps.json
+C:\Users\Espon\Downloads\Proyecto-Integrador-PYMES-main\src\InventorySystem.Domain\bin\Debug\net10.0\InventorySystem.Domain.dll
+C:\Users\Espon\Downloads\Proyecto-Integrador-PYMES-main\src\InventorySystem.Domain\bin\Debug\net10.0\InventorySystem.Domain.pdb
+C:\Users\Espon\Downloads\Proyecto-Integrador-PYMES-main\src\InventorySystem.Domain\obj\Debug\net10.0\InventorySystem.Domain.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Espon\Downloads\Proyecto-Integrador-PYMES-main\src\InventorySystem.Domain\obj\Debug\net10.0\InventorySystem.Domain.AssemblyInfoInputs.cache
+C:\Users\Espon\Downloads\Proyecto-Integrador-PYMES-main\src\InventorySystem.Domain\obj\Debug\net10.0\InventorySystem.Domain.AssemblyInfo.cs
+C:\Users\Espon\Downloads\Proyecto-Integrador-PYMES-main\src\InventorySystem.Domain\obj\Debug\net10.0\InventorySystem.Domain.csproj.CoreCompileInputs.cache
+C:\Users\Espon\Downloads\Proyecto-Integrador-PYMES-main\src\InventorySystem.Domain\obj\Debug\net10.0\InventorySystem.Domain.dll
+C:\Users\Espon\Downloads\Proyecto-Integrador-PYMES-main\src\InventorySystem.Domain\obj\Debug\net10.0\refint\InventorySystem.Domain.dll
+C:\Users\Espon\Downloads\Proyecto-Integrador-PYMES-main\src\InventorySystem.Domain\obj\Debug\net10.0\InventorySystem.Domain.pdb
+C:\Users\Espon\Downloads\Proyecto-Integrador-PYMES-main\src\InventorySystem.Domain\obj\Debug\net10.0\ref\InventorySystem.Domain.dll

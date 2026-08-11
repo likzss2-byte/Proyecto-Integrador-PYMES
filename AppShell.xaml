@@ -5,72 +5,35 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     xmlns:local="clr-namespace:InventorySystem"
     xmlns:pages="clr-namespace:InventorySystem.AppPages"
-    Title="Inventory"
+    Title="Sistema de inventario"
     FlyoutBehavior="Flyout">
 
     <Shell.FlyoutHeader>
         <Grid Padding="24,24,24,16">
-            <VerticalStackLayout Spacing="2">
-                <Label Text="Inventario PYMES" FontSize="18" FontAttributes="Bold" />
-                <Label Text="Navegación" FontSize="12" Opacity="0.7" />
-            </VerticalStackLayout>
+            <Label Text="Inventario" FontSize="18" FontAttributes="Bold" />
         </Grid>
     </Shell.FlyoutHeader>
 
-
-	<ShellContent
-        Title="Cargando"
-        Shell.FlyoutItemIsVisible="False"
-        ContentTemplate="{DataTemplate pages:LoadingScreen}"
-        Route="LoadingScreen">
-    </ShellContent>
-	<ShellContent
-        Title="Inicio"
-        Icon="home.svg"
-        ContentTemplate="{DataTemplate local:MainPage}"
-        Route="MainPage">
-	</ShellContent>
-	<ShellContent
-        Title="Inventario"
-        Icon="shelf.svg"
-        ContentTemplate="{DataTemplate pages:InventoryPage}"
-        Route="InventoryPage">
-    </ShellContent>
-	<ShellContent
-        Title="Nueva entrada"
-        Icon="addshipment.svg"
-        ContentTemplate="{DataTemplate pages:NewOrderPage}"
-        Route="NewOrderPage">
-	</ShellContent>
-	<ShellContent
-        Title="Pedidos y recepciones"
-        Icon="shippingtruck.svg"
-        ContentTemplate="{DataTemplate pages:PurchaseOrdersPage}"
-        Route="PurchaseOrdersPage">
-	</ShellContent>
-	<ShellContent
-        Title="Nuevo proveedor"
-        Icon="usermultiple.svg"
-        ContentTemplate="{DataTemplate pages:NewPurveyorPage}"
-        Route="NewPurveyorPage">
-	</ShellContent>
-	<ShellContent
-        Title="Nueva venta"
-        Icon="shoppingcart.svg"
-        ContentTemplate="{DataTemplate pages:NewSalePage}"
-        Route="NewSalePage">
-	</ShellContent>
-	<ShellContent
-        Title="Nuevo producto"
-        Icon="addsquare.svg"
-        ContentTemplate="{DataTemplate pages:NewItemPage}"
-        Route="NewItemPage">
-	</ShellContent>
-	<ShellContent
-        Title="Proveedores"
-        Icon="usermultiple2.svg"
-		ContentTemplate="{DataTemplate pages:PurveyorFullPage}"
-		Route="PurveyorFullPage">
-	</ShellContent>
-
+    <ShellContent Title="Cargando" Shell.FlyoutItemIsVisible="False"
+                  ContentTemplate="{DataTemplate pages:LoadingScreen}" Route="LoadingScreen" />
+    <ShellContent Title="Inicio" Icon="home.svg"
+                  ContentTemplate="{DataTemplate local:MainPage}" Route="MainPage" />
+    <ShellContent Title="Inventario" Icon="shelf.svg"
+                  ContentTemplate="{DataTemplate pages:InventoryPage}" Route="InventoryPage" />
+    <ShellContent Title="Lotes" Icon="shelf.svg"
+                  ContentTemplate="{DataTemplate pages:LotsPage}" Route="LotsPage" />
+    <ShellContent Title="Proveedores" Icon="usermultiple2.svg"
+                  ContentTemplate="{DataTemplate pages:PurveyorFullPage}" Route="PurveyorFullPage" />
+    <ShellContent Title="Registro de entradas" Icon="addshipment.svg"
+                  ContentTemplate="{DataTemplate pages:EntriesHistoryPage}" Route="EntriesHistoryPage" />
+    <ShellContent Title="Registro de ventas" Icon="shoppingcart.svg"
+                  ContentTemplate="{DataTemplate pages:SalesHistoryPage}" Route="SalesHistoryPage" />
+    <ShellContent Title="Agregar producto" Icon="addsquare.svg"
+                  ContentTemplate="{DataTemplate pages:NewItemPage}" Route="NewItemPage" />
+    <ShellContent Title="Agregar proveedor" Icon="usermultiple.svg"
+                  ContentTemplate="{DataTemplate pages:NewPurveyorPage}" Route="NewPurveyorPage" />
+    <ShellContent Title="Nueva entrada" Icon="addshipment.svg"
+                  ContentTemplate="{DataTemplate pages:NewEntryPage}" Route="NewEntryPage" />
+    <ShellContent Title="Nueva venta" Icon="shoppingcart.svg"
+                  ContentTemplate="{DataTemplate pages:NewSalePage}" Route="NewSalePage" />
 </Shell>
