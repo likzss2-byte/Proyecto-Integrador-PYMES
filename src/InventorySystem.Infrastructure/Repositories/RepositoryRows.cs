@@ -6,7 +6,7 @@ internal sealed class ProductRow
 {
     public long Id { get; set; }
     public long BusinessId { get; set; }
-    public string Sku { get; set; } = string.Empty;
+    public string? Sku { get; set; }
     public string? Barcode { get; set; }
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
@@ -19,6 +19,7 @@ internal sealed class ProductRow
     public string? NearestExpirationDate { get; set; }
     public long UndatedStockMilli { get; set; }
     public int Active { get; set; }
+    public int ArchivedByDelete { get; set; }
     public string CreatedAt { get; set; } = string.Empty;
     public string UpdatedAt { get; set; } = string.Empty;
 }
@@ -73,6 +74,8 @@ internal sealed class DocumentLineRow
     public long Id { get; set; }
     public long DocumentId { get; set; }
     public long ProductId { get; set; }
+    public string ProductName { get; set; } = string.Empty;
+    public long? LotId { get; set; }
     public long QuantityMilli { get; set; }
     public long UnitPriceBasis { get; set; }
     public string? LotCode { get; set; }
@@ -128,7 +131,7 @@ internal static class RepositoryRowMapper
         minimum_stock_milli MinimumStockMilli,sale_price_basis SalePriceBasis,expiration_mode ExpirationMode,
         (SELECT MIN(l.expiration_date) FROM inventory_lots l WHERE l.product_id=products.id AND l.quantity_milli>0 AND l.expiration_date IS NOT NULL) NearestExpirationDate,
         COALESCE((SELECT SUM(l.quantity_milli) FROM inventory_lots l WHERE l.product_id=products.id AND l.quantity_milli>0 AND l.expiration_date IS NULL),0) UndatedStockMilli,
-        active Active,created_at CreatedAt,updated_at UpdatedAt
+        active Active,archived_by_delete ArchivedByDelete,created_at CreatedAt,updated_at UpdatedAt
         """;
 
     public const string SupplierColumns = """

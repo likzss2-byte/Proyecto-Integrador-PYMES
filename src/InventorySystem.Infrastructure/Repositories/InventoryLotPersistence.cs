@@ -27,6 +27,52 @@ internal static class InventoryLotPersistence
             throw new InventoryRuleException("La cantidad del lote debe ser mayor que cero.");
         }
 
+        var normalizedLotCode = ProductRepository.DbText(lotCode) as string;
+        var expirationText = expirationDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        if (normalizedLotCode is not null)
+        {
+            var matchingLots = connection.Query<ExistingLotRow>(
+                """
+                SELECT id Id,expiration_date ExpirationDate,manufacturing_date ManufacturingDate,
+                       supplier_id SupplierId,unit_cost_basis UnitCostBasis
+                FROM inventory_lots
+                WHERE product_id=? AND lot_code=? COLLATE NOCASE
+                ORDER BY id;
+                """,
+                productId,
+                normalizedLotCode);
+            if (matchingLots.Any(row => !string.Equals(row.ExpirationDate, expirationText, StringComparison.Ordinal)))
+            {
+                throw new InventoryRuleException(
+                    $"El lote {normalizedLotCode} ya existe para este producto con una fecha de caducidad diferente.");
+            }
+
+            var existing = matchingLots.FirstOrDefault();
+            if (existing is not null)
+            {
+                var quantityMilli = SqliteValues.ToMilli(quantity);
+                connection.Execute(
+                    """
+                    UPDATE inventory_lots
+                    SET quantity_milli=quantity_milli+?,initial_quantity_milli=initial_quantity_milli+?,
+                        supplier_id=COALESCE(supplier_id,?),
+                        manufacturing_date=COALESCE(manufacturing_date,?),
+                        unit_cost_basis=COALESCE(?,unit_cost_basis),
+                        status=0,updated_at=?
+                    WHERE id=?;
+                    """,
+                    quantityMilli,
+                    quantityMilli,
+                    supplierId,
+                    manufacturingDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                    unitCost.HasValue ? SqliteValues.ToMoney(unitCost.Value) : null,
+                    receivedAt,
+                    existing.Id);
+                LinkSupplier(connection, productId, supplierId, unitCost, receivedAt);
+                return existing.Id;
+            }
+        }
+
         connection.Execute(
             """
             INSERT INTO inventory_lots(
@@ -36,37 +82,19 @@ internal static class InventoryLotPersistence
             """,
             productId,
             supplierId,
-            ProductRepository.DbText(lotCode),
+            normalizedLotCode,
             manufacturingDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
             SqliteValues.ToMilli(quantity),
             SqliteValues.ToMilli(quantity),
             unitCost.HasValue ? SqliteValues.ToMoney(unitCost.Value) : null,
-            expirationDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+            expirationText,
             receivedAt,
             purchaseOrderId,
             receiptId,
             receivedAt,
             receivedAt);
         var lotId = connection.ExecuteScalar<long>("SELECT last_insert_rowid();");
-        if (supplierId.HasValue)
-        {
-            connection.Execute(
-                """
-                INSERT INTO product_suppliers(
-                    product_id,supplier_id,supplier_sku,reference_cost_basis,active,created_at,updated_at)
-                VALUES(?,?,NULL,?,1,?,?)
-                ON CONFLICT(product_id,supplier_id) DO UPDATE SET
-                    reference_cost_basis=COALESCE(excluded.reference_cost_basis,product_suppliers.reference_cost_basis),
-                    active=1,
-                    updated_at=excluded.updated_at;
-                """,
-                productId,
-                supplierId.Value,
-                unitCost.HasValue ? SqliteValues.ToMoney(unitCost.Value) : null,
-                receivedAt,
-                receivedAt);
-        }
-
+        LinkSupplier(connection, productId, supplierId, unitCost, receivedAt);
         return lotId;
     }
 
@@ -87,6 +115,107 @@ internal static class InventoryLotPersistence
         return signedQuantity < 0
             ? ConsumeFefo(connection, productId, decimal.Abs(signedQuantity), now, allowExpiredLots)
             : [];
+    }
+
+    public static IReadOnlyList<LotAllocation> ConsumeSelected(
+        SQLiteConnection connection,
+        long productId,
+        long lotId,
+        decimal quantity,
+        string now,
+        bool allowExpiredLots)
+    {
+        var requested = SqliteValues.ToMilli(quantity);
+        var lot = connection.Query<SelectedLotRow>(
+                """
+                SELECT l.id Id,l.product_id ProductId,l.quantity_milli QuantityMilli,l.expiration_date ExpirationDate,
+                       p.expiration_mode ProductExpirationMode
+                FROM inventory_lots l
+                JOIN products p ON p.id=l.product_id
+                WHERE l.id=? LIMIT 1;
+                """,
+                lotId)
+            .FirstOrDefault()
+            ?? throw new InventoryRuleException("El lote seleccionado ya no existe.");
+        if (lot.ProductId != productId)
+        {
+            throw new InventoryRuleException("El lote seleccionado no pertenece al producto de esta línea.");
+        }
+
+        if (lot.QuantityMilli < requested)
+        {
+            throw new InventoryRuleException(
+                $"El lote seleccionado no tiene suficiente disponibilidad. Disponible: {SqliteValues.FromMilli(lot.QuantityMilli):0.###}.");
+        }
+
+        if (lot.ProductExpirationMode == (int)ExpirationMode.Tracked)
+        {
+            if (lot.ExpirationDate is null)
+            {
+                throw new InventoryRuleException(
+                    "El lote seleccionado pertenece a un producto perecedero pero no tiene fecha de caducidad. Corrige el lote antes de venderlo.");
+            }
+
+            if (!allowExpiredLots)
+            {
+                var expiration = DateOnly.ParseExact(lot.ExpirationDate, "yyyy-MM-dd", CultureInfo.InvariantCulture);
+                if (expiration < DateOnly.FromDateTime(DateTime.Today))
+                {
+                    throw new InventoryRuleException(
+                        "El lote seleccionado está caducado. Debes confirmar explícitamente la venta de producto caducado.");
+                }
+            }
+        }
+
+        var changed = connection.Execute(
+            """
+            UPDATE inventory_lots
+            SET quantity_milli=quantity_milli-?,
+                status=CASE WHEN quantity_milli-?=0 THEN 1 ELSE 0 END,
+                updated_at=?
+            WHERE id=? AND product_id=? AND quantity_milli>=?;
+            """,
+            requested,
+            requested,
+            now,
+            lotId,
+            productId,
+            requested);
+        if (changed != 1)
+        {
+            throw new InventoryRuleException("El lote cambió de disponibilidad antes de confirmar la operación.");
+        }
+
+        return [new LotAllocation(lotId, quantity)];
+    }
+
+    internal static void LinkSupplier(
+        SQLiteConnection connection,
+        long productId,
+        long? supplierId,
+        decimal? unitCost,
+        string receivedAt)
+    {
+        if (!supplierId.HasValue)
+        {
+            return;
+        }
+
+        connection.Execute(
+            """
+            INSERT INTO product_suppliers(
+                product_id,supplier_id,supplier_sku,reference_cost_basis,active,created_at,updated_at)
+            VALUES(?,?,NULL,?,1,?,?)
+            ON CONFLICT(product_id,supplier_id) DO UPDATE SET
+                reference_cost_basis=COALESCE(excluded.reference_cost_basis,product_suppliers.reference_cost_basis),
+                active=1,
+                updated_at=excluded.updated_at;
+            """,
+            productId,
+            supplierId.Value,
+            unitCost.HasValue ? SqliteValues.ToMoney(unitCost.Value) : null,
+            receivedAt,
+            receivedAt);
     }
 
     public static void RecordMovementAllocations(
@@ -253,6 +382,24 @@ internal static class InventoryLotPersistence
         }
 
         return allocations;
+    }
+
+    private sealed class ExistingLotRow
+    {
+        public long Id { get; set; }
+        public string? ExpirationDate { get; set; }
+        public string? ManufacturingDate { get; set; }
+        public long? SupplierId { get; set; }
+        public long? UnitCostBasis { get; set; }
+    }
+
+    private sealed class SelectedLotRow
+    {
+        public long Id { get; set; }
+        public long ProductId { get; set; }
+        public long QuantityMilli { get; set; }
+        public string? ExpirationDate { get; set; }
+        public int ProductExpirationMode { get; set; }
     }
 
     private sealed class LotQuantityRow

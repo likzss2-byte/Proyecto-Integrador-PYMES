@@ -1,10 +1,12 @@
+using System.Globalization;
+using System.Text.RegularExpressions;
 using InventorySystem.Domain;
 using InventorySystem.Infrastructure.Data;
 using SQLite;
 
 namespace InventorySystem.Infrastructure.Repositories;
 
-public sealed class ProductRepository
+public sealed partial class ProductRepository
 {
     private readonly InventoryDatabase _database;
 
@@ -21,7 +23,7 @@ public sealed class ProductRepository
         CancellationToken cancellationToken = default)
     {
         InventoryRules.ValidateProduct(input);
-        var sku = InventoryRules.NormalizeSku(input.Sku);
+        var sku = DbText(input.Sku) as string;
         var barcode = InventoryRules.NormalizeBarcode(input.Barcode);
         initialStock = InventoryRules.NormalizeQuantity(initialStock);
         if (initialStock < 0)
@@ -41,7 +43,7 @@ public sealed class ProductRepository
         return _database.WriteAsync(connection =>
         {
             EnsureBusinessExists(connection, businessId);
-            EnsureUniqueCodes(connection, businessId, sku, barcode, productId);
+            EnsureUniqueBarcode(connection, businessId, barcode, productId);
             var now = SqliteValues.Date(DateTime.UtcNow);
             long id;
             if (productId.HasValue)
@@ -51,7 +53,8 @@ public sealed class ProductRepository
                 connection.Execute(
                     """
                     UPDATE products SET sku=?,barcode=?,name=?,description=?,brand=?,unit_of_measure=?,
-                        minimum_stock_milli=?,sale_price_basis=?,expiration_mode=?,active=?,updated_at=?
+                        minimum_stock_milli=?,sale_price_basis=?,expiration_mode=?,active=?,
+                        archived_by_delete=CASE WHEN ?=1 THEN 0 ELSE archived_by_delete END,updated_at=?
                     WHERE id=? AND business_id=?;
                     """,
                     sku,
@@ -63,6 +66,7 @@ public sealed class ProductRepository
                     SqliteValues.ToMilli(input.MinimumStock),
                     SqliteValues.ToMoney(input.SalePrice),
                     (int)input.ExpirationMode,
+                    input.Active ? 1 : 0,
                     input.Active ? 1 : 0,
                     now,
                     existing.Id,
@@ -144,24 +148,12 @@ public sealed class ProductRepository
         }
 
         return _database.ReadAsync(connection =>
-        {
-            var byBarcode = connection.Query<ProductRow>(
+            connection.Query<ProductRow>(
                     $"SELECT {RepositoryRowMapper.ProductColumns} FROM products WHERE business_id=? AND barcode=? COLLATE NOCASE LIMIT 1;",
                     businessId,
                     normalized)
-                .FirstOrDefault();
-            if (byBarcode is not null)
-            {
-                return byBarcode.ToDomain();
-            }
-
-            var bySku = connection.Query<ProductRow>(
-                    $"SELECT {RepositoryRowMapper.ProductColumns} FROM products WHERE business_id=? AND sku=? COLLATE NOCASE LIMIT 1;",
-                    businessId,
-                    InventoryRules.NormalizeSku(normalized))
-                .FirstOrDefault();
-            return bySku?.ToDomain();
-        }, cancellationToken);
+                .FirstOrDefault()?.ToDomain(),
+            cancellationToken);
     }
 
     public Task<IReadOnlyList<Product>> SearchAsync(
@@ -180,11 +172,10 @@ public sealed class ProductRepository
                 conditions.Add("active=1");
             }
 
-            if (!string.IsNullOrWhiteSpace(search))
+            var queryCondition = BuildSearchCondition(search, values);
+            if (!string.IsNullOrWhiteSpace(queryCondition))
             {
-                conditions.Add("(name LIKE ? OR brand LIKE ? OR sku LIKE ? OR barcode LIKE ?)");
-                var term = $"%{search.Trim()}%";
-                values.AddRange([term, term, term, term]);
+                conditions.Add(queryCondition);
             }
 
             var orderColumn = orderBy.ToLowerInvariant() switch
@@ -199,6 +190,137 @@ public sealed class ProductRepository
                 values.ToArray());
             return rows.Select(row => row.ToDomain()).ToArray();
         }, cancellationToken);
+
+    private static string? BuildSearchCondition(string? rawSearch, List<object> values)
+    {
+        if (string.IsNullOrWhiteSpace(rawSearch))
+        {
+            return null;
+        }
+
+        var groups = rawSearch
+            .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+            .Select(group => group
+                .Split('&', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+                .ToArray())
+            .Where(group => group.Length > 0)
+            .ToArray();
+        if (groups.Length == 0)
+        {
+            return null;
+        }
+
+        var regularGroups = new List<string>(groups.Length);
+        var exclusionOnlyGroups = new List<string>();
+        foreach (var group in groups)
+        {
+            var terms = new List<string>(group.Length);
+            var hasPositiveTerm = false;
+            foreach (var rawTerm in group)
+            {
+                var term = rawTerm.Trim();
+                var negated = term.StartsWith('!');
+                if (negated)
+                {
+                    term = term[1..].Trim();
+                }
+                else
+                {
+                    hasPositiveTerm = true;
+                }
+
+                if (term.Length == 0)
+                {
+                    continue;
+                }
+
+                var condition = TryBuildNumericCondition(term, values) ?? BuildTextCondition(term, values);
+                terms.Add(negated ? $"NOT ({condition})" : condition);
+            }
+
+            if (terms.Count == 0)
+            {
+                continue;
+            }
+
+            var groupCondition = $"({string.Join(" AND ", terms)})";
+            if (hasPositiveTerm)
+            {
+                regularGroups.Add(groupCondition);
+            }
+            else
+            {
+                exclusionOnlyGroups.Add(groupCondition);
+            }
+        }
+
+        var orGroups = new List<string>(regularGroups.Count + 1);
+        if (exclusionOnlyGroups.Count > 0)
+        {
+            orGroups.Add($"({string.Join(" AND ", exclusionOnlyGroups)})");
+        }
+        orGroups.AddRange(regularGroups);
+
+        return orGroups.Count == 0 ? null : $"({string.Join(" OR ", orGroups)})";
+    }
+
+    private static string BuildTextCondition(string term, List<object> values)
+    {
+        var partial = $"%{EscapeLike(term)}%";
+        var exact = term.Trim();
+        values.Add(partial);
+        values.Add(partial);
+        values.Add(partial);
+        values.Add(exact);
+        return "(name LIKE ? ESCAPE '\\' COLLATE NOCASE OR description LIKE ? ESCAPE '\\' COLLATE NOCASE OR brand LIKE ? ESCAPE '\\' COLLATE NOCASE OR barcode=? COLLATE NOCASE)";
+    }
+
+    private static string? TryBuildNumericCondition(string term, List<object> values)
+    {
+        var match = NumericSearchRegex().Match(term);
+        if (!match.Success)
+        {
+            return null;
+        }
+
+        var field = match.Groups["field"].Value.ToLowerInvariant();
+        var first = ParseSearchDecimal(match.Groups["first"].Value);
+        var secondGroup = match.Groups["second"];
+        var column = field == "stock" ? "stock_milli" : "sale_price_basis";
+        Func<decimal, long> convert = field == "stock" ? SqliteValues.ToMilli : SqliteValues.ToMoney;
+
+        if (secondGroup.Success)
+        {
+            var second = ParseSearchDecimal(secondGroup.Value);
+            var minimum = Math.Min(first, second);
+            var maximum = Math.Max(first, second);
+            values.Add(convert(minimum));
+            values.Add(convert(maximum));
+            return $"({column} BETWEEN ? AND ?)";
+        }
+
+        var op = match.Groups["op"].Success ? match.Groups["op"].Value : "=";
+        values.Add(convert(first));
+        return $"({column} {op} ?)";
+    }
+
+    private static decimal ParseSearchDecimal(string value)
+    {
+        if (decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out var parsed))
+        {
+            return parsed;
+        }
+
+        throw new InventoryRuleException($"El valor numérico '{value}' no es válido en la búsqueda.");
+    }
+
+    private static string EscapeLike(string value) =>
+        value.Replace("\\", "\\\\", StringComparison.Ordinal)
+             .Replace("%", "\\%", StringComparison.Ordinal)
+             .Replace("_", "\\_", StringComparison.Ordinal);
+
+    [GeneratedRegex(@"^(?<field>stock|precio|price)\s*(?:(?<op>>=|<=|>|<|=)\s*)?(?<first>\d+(?:\.\d+)?)\s*(?:-\s*(?<second>\d+(?:\.\d+)?))?$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    private static partial Regex NumericSearchRegex();
 
     internal static ProductRow? GetRow(SQLiteConnection connection, long businessId, long productId) =>
         connection.Query<ProductRow>(
@@ -250,23 +372,13 @@ public sealed class ProductRepository
         }
     }
 
-    private static void EnsureUniqueCodes(
+    private static void EnsureUniqueBarcode(
         SQLiteConnection connection,
         long businessId,
-        string sku,
         string? barcode,
         long? productId)
     {
         var excluded = productId ?? 0;
-        if (connection.ExecuteScalar<int>(
-                "SELECT COUNT(*) FROM products WHERE business_id=? AND sku=? COLLATE NOCASE AND id<>?;",
-                businessId,
-                sku,
-                excluded) > 0)
-        {
-            throw new InventoryRuleException("El SKU ya pertenece a otro producto.");
-        }
-
         if (barcode is not null && connection.ExecuteScalar<int>(
                 "SELECT COUNT(*) FROM products WHERE business_id=? AND barcode=? COLLATE NOCASE AND id<>?;",
                 businessId,
@@ -276,4 +388,41 @@ public sealed class ProductRepository
             throw new InventoryRuleException("El código de barras ya pertenece a otro producto.");
         }
     }
+
+    public Task<bool> DeleteOrArchiveAsync(
+        long businessId,
+        long productId,
+        CancellationToken cancellationToken = default) =>
+        _database.WriteAsync(connection =>
+        {
+            var product = GetRow(connection, businessId, productId)
+                ?? throw new InventoryRuleException("El producto no existe.");
+
+            var hasReferences = connection.ExecuteScalar<int>(
+                """
+                SELECT (
+                    EXISTS(SELECT 1 FROM inventory_lots WHERE product_id=?) OR
+                    EXISTS(SELECT 1 FROM inventory_document_lines WHERE product_id=?) OR
+                    EXISTS(SELECT 1 FROM inventory_movements WHERE product_id=?) OR
+                    EXISTS(SELECT 1 FROM inventory_count_lines WHERE product_id=?) OR
+                    EXISTS(SELECT 1 FROM product_suppliers WHERE product_id=?) OR
+                    EXISTS(SELECT 1 FROM recent_product_queries WHERE product_id=?) OR
+                    EXISTS(SELECT 1 FROM purchase_order_lines WHERE product_id=?)
+                );
+                """,
+                productId, productId, productId, productId, productId, productId, productId) == 1;
+
+            if (hasReferences)
+            {
+                connection.Execute(
+                    "UPDATE products SET active=0,archived_by_delete=1,updated_at=? WHERE id=? AND business_id=?;",
+                    SqliteValues.Date(DateTime.UtcNow),
+                    product.Id,
+                    businessId);
+                return false;
+            }
+
+            connection.Execute("DELETE FROM products WHERE id=? AND business_id=?;", product.Id, businessId);
+            return true;
+        }, cancellationToken);
 }

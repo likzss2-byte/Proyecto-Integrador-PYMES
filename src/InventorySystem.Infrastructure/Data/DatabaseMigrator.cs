@@ -5,7 +5,7 @@ namespace InventorySystem.Infrastructure.Data;
 
 internal static class DatabaseMigrator
 {
-    public const int LatestSchemaVersion = 6;
+    public const int LatestSchemaVersion = 9;
 
     public static string? Migrate(string databasePath)
     {
@@ -39,6 +39,12 @@ internal static class DatabaseMigrator
         while (version < LatestSchemaVersion)
         {
             var nextVersion = version + 1;
+            var requiresForeignKeysOff = nextVersion == 8;
+            if (requiresForeignKeysOff)
+            {
+                connection.Execute("PRAGMA foreign_keys = OFF;");
+            }
+
             connection.BeginTransaction();
             try
             {
@@ -62,6 +68,15 @@ internal static class DatabaseMigrator
                     case 6:
                         CreateInventorySessionSchema(connection);
                         break;
+                    case 7:
+                        CreateSelectedLotDocumentLinesSchema(connection);
+                        break;
+                    case 8:
+                        CreateOptionalSkuAndSupplierContactsSchema(connection);
+                        break;
+                    case 9:
+                        CreateProductArchiveTrackingSchema(connection);
+                        break;
                     default:
                         throw new InvalidOperationException($"No existe la migración {nextVersion}.");
                 }
@@ -69,10 +84,26 @@ internal static class DatabaseMigrator
                 connection.Execute($"PRAGMA user_version = {nextVersion.ToString(CultureInfo.InvariantCulture)};");
                 connection.Commit();
                 version = nextVersion;
+                if (requiresForeignKeysOff)
+                {
+                    connection.Execute("PRAGMA foreign_keys = ON;");
+                    var violations = connection.ExecuteScalar<int>("SELECT COUNT(*) FROM pragma_foreign_key_check;");
+                    if (violations > 0)
+                    {
+                        throw new InvalidOperationException("La migración dejó relaciones inválidas en la base de datos.");
+                    }
+                }
             }
             catch
             {
-                connection.Rollback();
+                if (connection.IsInTransaction)
+                {
+                    connection.Rollback();
+                }
+                if (requiresForeignKeysOff)
+                {
+                    connection.Execute("PRAGMA foreign_keys = ON;");
+                }
                 throw;
             }
         }
@@ -619,6 +650,131 @@ internal static class DatabaseMigrator
             "INTEGER NULL REFERENCES inventory_counts(id)");
         connection.Execute(
             "CREATE INDEX IF NOT EXISTS ix_inventory_movements_count ON inventory_movements(inventory_count_id, occurred_at DESC);");
+    }
+
+
+    private static void CreateSelectedLotDocumentLinesSchema(SQLiteConnection connection)
+    {
+        ExecuteEach(connection,
+            "DROP TABLE IF EXISTS inventory_document_lines_v7;",
+            """
+            CREATE TABLE inventory_document_lines_v7 (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                document_id INTEGER NOT NULL REFERENCES inventory_documents(id),
+                product_id INTEGER NOT NULL REFERENCES products(id),
+                lot_id INTEGER NULL REFERENCES inventory_lots(id),
+                quantity_milli INTEGER NOT NULL CHECK(quantity_milli > 0),
+                unit_price_basis INTEGER NOT NULL DEFAULT 0 CHECK(unit_price_basis >= 0),
+                lot_code TEXT NULL COLLATE NOCASE,
+                manufacturing_date TEXT NULL,
+                expiration_date TEXT NULL
+            );
+            """,
+            """
+            INSERT INTO inventory_document_lines_v7(
+                id,document_id,product_id,lot_id,quantity_milli,unit_price_basis,
+                lot_code,manufacturing_date,expiration_date)
+            SELECT id,document_id,product_id,NULL,quantity_milli,unit_price_basis,
+                   lot_code,manufacturing_date,expiration_date
+            FROM inventory_document_lines;
+            """,
+            "DROP TABLE inventory_document_lines;",
+            "ALTER TABLE inventory_document_lines_v7 RENAME TO inventory_document_lines;",
+            "CREATE INDEX ix_document_lines_document ON inventory_document_lines(document_id,id);",
+            "CREATE INDEX ix_document_lines_product ON inventory_document_lines(product_id,document_id);",
+            "CREATE INDEX ix_document_lines_lot ON inventory_document_lines(lot_id,document_id);");
+    }
+
+    private static void CreateOptionalSkuAndSupplierContactsSchema(SQLiteConnection connection)
+    {
+        ExecuteEach(connection,
+            "DROP INDEX IF EXISTS ux_products_business_sku;",
+            "DROP TABLE IF EXISTS products_v8;",
+            """
+            CREATE TABLE products_v8 (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                business_id INTEGER NOT NULL REFERENCES businesses(id),
+                sku TEXT NULL COLLATE NOCASE,
+                barcode TEXT NULL COLLATE NOCASE,
+                name TEXT NOT NULL COLLATE NOCASE,
+                description TEXT NULL,
+                brand TEXT NULL COLLATE NOCASE,
+                unit_of_measure INTEGER NOT NULL DEFAULT 0 CHECK(unit_of_measure BETWEEN 0 AND 2),
+                stock_milli INTEGER NOT NULL DEFAULT 0,
+                minimum_stock_milli INTEGER NOT NULL DEFAULT 0 CHECK(minimum_stock_milli >= 0),
+                sale_price_basis INTEGER NOT NULL DEFAULT 0 CHECK(sale_price_basis >= 0),
+                active INTEGER NOT NULL DEFAULT 1 CHECK(active IN (0,1)),
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                expiration_mode INTEGER NOT NULL DEFAULT 0 CHECK(expiration_mode BETWEEN 0 AND 2)
+            );
+            """,
+            """
+            INSERT INTO products_v8(
+                id,business_id,sku,barcode,name,description,brand,unit_of_measure,stock_milli,
+                minimum_stock_milli,sale_price_basis,active,created_at,updated_at,expiration_mode)
+            SELECT id,business_id,NULLIF(trim(sku),''),barcode,name,description,brand,unit_of_measure,stock_milli,
+                   minimum_stock_milli,sale_price_basis,active,created_at,updated_at,expiration_mode
+            FROM products;
+            """,
+            "DROP TABLE products;",
+            "ALTER TABLE products_v8 RENAME TO products;",
+            "CREATE UNIQUE INDEX IF NOT EXISTS ux_products_business_barcode ON products(business_id, barcode) WHERE barcode IS NOT NULL AND trim(barcode) <> '';",
+            "CREATE INDEX IF NOT EXISTS ix_products_name ON products(business_id, name);",
+            "CREATE INDEX IF NOT EXISTS ix_products_brand ON products(business_id, brand);",
+            """
+            CREATE TABLE IF NOT EXISTS supplier_phones (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                supplier_id INTEGER NOT NULL REFERENCES suppliers(id),
+                phone TEXT NOT NULL,
+                position INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL,
+                UNIQUE(supplier_id, phone)
+            );
+            """,
+            "CREATE INDEX IF NOT EXISTS ix_supplier_phones_supplier ON supplier_phones(supplier_id, position, id);",
+            """
+            CREATE TABLE IF NOT EXISTS supplier_emails (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                supplier_id INTEGER NOT NULL REFERENCES suppliers(id),
+                email TEXT NOT NULL COLLATE NOCASE,
+                position INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL,
+                UNIQUE(supplier_id, email)
+            );
+            """,
+            "CREATE INDEX IF NOT EXISTS ix_supplier_emails_supplier ON supplier_emails(supplier_id, position, id);",
+            """
+            INSERT OR IGNORE INTO supplier_phones(supplier_id,phone,position,created_at)
+            SELECT id,trim(phone),0,updated_at FROM suppliers WHERE phone IS NOT NULL AND trim(phone)<>'';
+            """,
+            """
+            INSERT OR IGNORE INTO supplier_emails(supplier_id,email,position,created_at)
+            SELECT id,trim(email),0,updated_at FROM suppliers WHERE email IS NOT NULL AND trim(email)<>'';
+            """);
+    }
+
+
+    private static void CreateProductArchiveTrackingSchema(SQLiteConnection connection)
+    {
+        AddColumnIfMissing(
+            connection,
+            "products",
+            "archived_by_delete",
+            "INTEGER NOT NULL DEFAULT 0 CHECK(archived_by_delete IN (0,1))");
+
+        // Las versiones anteriores solo tenían active=0. Si un producto inactivo ya tiene
+        // historial, lo tratamos como archivado para conservar el comportamiento de borrado.
+        connection.Execute(
+            """
+            UPDATE products
+            SET archived_by_delete=1
+            WHERE active=0 AND (
+                EXISTS(SELECT 1 FROM inventory_document_lines l WHERE l.product_id=products.id) OR
+                EXISTS(SELECT 1 FROM inventory_movements m WHERE m.product_id=products.id) OR
+                EXISTS(SELECT 1 FROM inventory_lots lot WHERE lot.product_id=products.id)
+            );
+            """);
     }
 
     private static void AddColumnIfMissing(

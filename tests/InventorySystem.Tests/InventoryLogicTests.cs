@@ -91,6 +91,66 @@ public sealed class InventoryLogicTests
     }
 
     [Fact]
+    public async Task Busqueda_avanzada_combina_texto_stock_precio_y_negacion()
+    {
+        await using var context = await TestContext.CreateAsync();
+        var coca = await context.Products.SaveAsync(
+            context.Business.Id,
+            new ProductInput(
+                "COCA-600",
+                "7501055300006",
+                "Coca-Cola 600 ml",
+                "Refresco con gas",
+                "Coca-Cola",
+                UnitOfMeasure.Unit,
+                0,
+                25m,
+                ExpirationMode: ExpirationMode.NotApplicable),
+            10);
+        var water = await context.Products.SaveAsync(
+            context.Business.Id,
+            new ProductInput(
+                "AGUA-1",
+                null,
+                "Agua natural",
+                "Botella",
+                "Marca Azul",
+                UnitOfMeasure.Unit,
+                0,
+                15m,
+                ExpirationMode: ExpirationMode.NotApplicable),
+            2);
+
+        Assert.Equal(coca.Id, Assert.Single(await context.Products.SearchAsync(context.Business.Id, "coca&stock>5")).Id);
+        Assert.Equal(coca.Id, Assert.Single(await context.Products.SearchAsync(context.Business.Id, "precio20-30")).Id);
+        Assert.Equal(water.Id, Assert.Single(await context.Products.SearchAsync(context.Business.Id, "!coca")).Id);
+        Assert.Empty(await context.Products.SearchAsync(context.Business.Id, "!coca,!agua"));
+        Assert.Equal(2, (await context.Products.SearchAsync(context.Business.Id, "coca,agua")).Count);
+        Assert.Equal(2, (await context.Products.SearchAsync(context.Business.Id, "!coca,stock>5")).Count);
+    }
+
+    [Fact]
+    public async Task Busqueda_no_hace_coincidencia_parcial_en_sku()
+    {
+        await using var context = await TestContext.CreateAsync();
+        await context.Products.SaveAsync(
+            context.Business.Id,
+            new ProductInput(
+                "ABC1234",
+                null,
+                "Producto neutro",
+                null,
+                null,
+                UnitOfMeasure.Unit,
+                0,
+                1m,
+                ExpirationMode: ExpirationMode.NotApplicable));
+
+        Assert.Empty(await context.Products.SearchAsync(context.Business.Id, "ABC123"));
+        Assert.Single(await context.Products.SearchAsync(context.Business.Id, "ABC1234"));
+    }
+
+    [Fact]
     public async Task Registra_producto_con_datos_de_dominio()
     {
         await using var context = await TestContext.CreateAsync();
@@ -189,7 +249,10 @@ public sealed class InventoryLogicTests
         var second = await context.CreateProductAsync("SKU-V2", stock: 10);
         var sale = await context.Transactions.CreateSaleAsync(
             context.Business.Id,
-            [new(first.Id, 2, 3), new(second.Id, 1, 4)]);
+            [
+                await context.CreateSaleLineAsync(first, 2, 3),
+                await context.CreateSaleLineAsync(second, 1, 4)
+            ]);
 
         await context.Transactions.ConfirmAsync(context.Business.Id, sale.Id);
 
@@ -198,11 +261,37 @@ public sealed class InventoryLogicTests
     }
 
     [Fact]
+    public async Task Venta_admite_el_mismo_producto_en_varios_renglones_y_lotes()
+    {
+        await using var context = await TestContext.CreateAsync();
+        var product = await context.CreateProductAsync("SKU-DUP", expirationMode: ExpirationMode.Tracked);
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        await context.Lots.ReceiveAsync(context.Business.Id, product.Id, 4, ExpirationMode.Tracked, today.AddDays(10), "A");
+        await context.Lots.ReceiveAsync(context.Business.Id, product.Id, 5, ExpirationMode.Tracked, today.AddDays(20), "B");
+        var sale = await context.Transactions.CreateSaleAsync(
+            context.Business.Id,
+            [
+                await context.CreateSaleLineAsync(product, 2, 10, "A"),
+                await context.CreateSaleLineAsync(product, 3, 10, "B")
+            ]);
+
+        await context.Transactions.ConfirmAsync(context.Business.Id, sale.Id);
+        var lots = await context.Lots.GetLotsAsync(context.Business.Id, product.Id);
+
+        Assert.Equal(2, sale.Lines.Count);
+        Assert.Equal(2, lots.Single(lot => lot.LotCode == "A").Quantity);
+        Assert.Equal(2, lots.Single(lot => lot.LotCode == "B").Quantity);
+        Assert.Equal(4, (await context.Products.GetAsync(context.Business.Id, product.Id))!.Stock);
+    }
+
+    [Fact]
     public async Task Venta_rechaza_stock_insuficiente()
     {
         await using var context = await TestContext.CreateAsync();
         var product = await context.CreateProductAsync("SKU-SIN", stock: 1);
-        var sale = await context.Transactions.CreateSaleAsync(context.Business.Id, [new(product.Id, 2, 1)]);
+        var sale = await context.Transactions.CreateSaleAsync(
+            context.Business.Id,
+            [await context.CreateSaleLineAsync(product, 2, 1)]);
 
         var error = await Assert.ThrowsAsync<InventoryRuleException>(
             () => context.Transactions.ConfirmAsync(context.Business.Id, sale.Id));
@@ -216,7 +305,9 @@ public sealed class InventoryLogicTests
     {
         await using var context = await TestContext.CreateAsync();
         var product = await context.CreateProductAsync("SKU-V", stock: 8);
-        var sale = await context.Transactions.CreateSaleAsync(context.Business.Id, [new(product.Id, 3, 1)]);
+        var sale = await context.Transactions.CreateSaleAsync(
+            context.Business.Id,
+            [await context.CreateSaleLineAsync(product, 3, 1)]);
 
         await context.Transactions.ConfirmAsync(context.Business.Id, sale.Id);
         await Assert.ThrowsAsync<InventoryRuleException>(
@@ -230,7 +321,9 @@ public sealed class InventoryLogicTests
     {
         await using var context = await TestContext.CreateAsync();
         var product = await context.CreateProductAsync("SKU-CV", stock: 8);
-        var sale = await context.Transactions.CreateSaleAsync(context.Business.Id, [new(product.Id, 3, 1)]);
+        var sale = await context.Transactions.CreateSaleAsync(
+            context.Business.Id,
+            [await context.CreateSaleLineAsync(product, 3, 1)]);
         await context.Transactions.ConfirmAsync(context.Business.Id, sale.Id);
 
         await context.Transactions.CancelAsync(context.Business.Id, sale.Id, "Cliente devolvió el producto");
@@ -327,7 +420,10 @@ public sealed class InventoryLogicTests
         var second = await context.CreateProductAsync("SKU-T2", stock: 5);
         var sale = await context.Transactions.CreateSaleAsync(
             context.Business.Id,
-            [new(first.Id, 2, 1), new(second.Id, 3, 1)]);
+            [
+                await context.CreateSaleLineAsync(first, 2, 1),
+                await context.CreateSaleLineAsync(second, 3, 1)
+            ]);
 
         await context.Transactions.ConfirmAsync(context.Business.Id, sale.Id);
 
@@ -344,7 +440,10 @@ public sealed class InventoryLogicTests
         var second = await context.CreateProductAsync("SKU-X2", stock: 5);
         var sale = await context.Transactions.CreateSaleAsync(
             context.Business.Id,
-            [new(first.Id, 2, 1), new(second.Id, 2, 1)]);
+            [
+                await context.CreateSaleLineAsync(first, 2, 1),
+                await context.CreateSaleLineAsync(second, 2, 1)
+            ]);
         await context.Products.SaveAsync(
             context.Business.Id,
             new ProductInput(second.Sku, null, second.Name, null, null, UnitOfMeasure.Unit, 0, 0, false),
@@ -469,22 +568,37 @@ public sealed class InventoryLogicTests
     }
 
     [Fact]
-    public async Task Salida_consume_primero_el_lote_que_caduca_FEFO()
+    public async Task Salida_descuenta_el_lote_seleccionado_y_no_aplica_FEFO()
     {
         await using var context = await TestContext.CreateAsync();
-        var product = await context.CreateProductAsync("SKU-FEFO");
+        var product = await context.CreateProductAsync("SKU-SEL", expirationMode: ExpirationMode.Tracked);
         var today = DateOnly.FromDateTime(DateTime.Today);
         await context.Lots.ReceiveAsync(context.Business.Id, product.Id, 5, ExpirationMode.Tracked, today.AddDays(5), "PRIMERO");
-        await context.Lots.ReceiveAsync(context.Business.Id, product.Id, 5, ExpirationMode.Tracked, today.AddDays(30), "DESPUES");
-        var sale = await context.Transactions.CreateSaleAsync(context.Business.Id, [new(product.Id, 4, 1)]);
+        await context.Lots.ReceiveAsync(context.Business.Id, product.Id, 5, ExpirationMode.Tracked, today.AddDays(30), "SELECCIONADO");
+        var sale = await context.Transactions.CreateSaleAsync(
+            context.Business.Id,
+            [await context.CreateSaleLineAsync(product, 4, 1, "SELECCIONADO")]);
 
         await context.Transactions.ConfirmAsync(context.Business.Id, sale.Id);
         var lots = await context.Lots.GetLotsAsync(context.Business.Id, product.Id);
 
-        Assert.Equal(2, lots.Count);
-        Assert.Equal("PRIMERO", lots[0].LotCode);
-        Assert.Equal(1, lots[0].Quantity);
-        Assert.Equal(5, lots[1].Quantity);
+        Assert.Equal(5, lots.Single(lot => lot.LotCode == "PRIMERO").Quantity);
+        Assert.Equal(1, lots.Single(lot => lot.LotCode == "SELECCIONADO").Quantity);
+    }
+
+    [Fact]
+    public async Task Entrada_rechaza_mismo_codigo_de_lote_con_caducidad_diferente()
+    {
+        await using var context = await TestContext.CreateAsync();
+        var product = await context.CreateProductAsync("SKU-CONFLICT", expirationMode: ExpirationMode.Tracked);
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        await context.Lots.ReceiveAsync(context.Business.Id, product.Id, 2, ExpirationMode.Tracked, today.AddDays(10), "MISMO");
+
+        var error = await Assert.ThrowsAsync<InventoryRuleException>(() =>
+            context.Lots.ReceiveAsync(context.Business.Id, product.Id, 1, ExpirationMode.Tracked, today.AddDays(11), "MISMO"));
+
+        Assert.Contains("caducidad", error.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(2, (await context.Lots.GetLotsAsync(context.Business.Id, product.Id)).Single().Quantity);
     }
 
     [Fact]
@@ -533,7 +647,9 @@ public sealed class InventoryLogicTests
         var today = DateOnly.FromDateTime(DateTime.Today);
         await context.Lots.ReceiveAsync(context.Business.Id, product.Id, 2, ExpirationMode.Tracked, today.AddDays(2), "L-A");
         await context.Lots.ReceiveAsync(context.Business.Id, product.Id, 4, ExpirationMode.Tracked, today.AddDays(9), "L-B");
-        var sale = await context.Transactions.CreateSaleAsync(context.Business.Id, [new(product.Id, 2, 1)]);
+        var sale = await context.Transactions.CreateSaleAsync(
+            context.Business.Id,
+            [await context.CreateSaleLineAsync(product, 2, 1, "L-A")]);
 
         await context.Transactions.ConfirmAsync(context.Business.Id, sale.Id);
 
@@ -575,7 +691,9 @@ public sealed class InventoryLogicTests
             ExpirationMode.Tracked,
             DateOnly.FromDateTime(DateTime.Today).AddDays(-1),
             "CAD");
-        var sale = await context.Transactions.CreateSaleAsync(context.Business.Id, [new(product.Id, 1, 1)]);
+        var sale = await context.Transactions.CreateSaleAsync(
+            context.Business.Id,
+            [await context.CreateSaleLineAsync(product, 1, 1, "CAD")]);
 
         await Assert.ThrowsAsync<InventoryRuleException>(
             () => context.Transactions.ConfirmAsync(context.Business.Id, sale.Id));
@@ -1212,6 +1330,24 @@ internal sealed class TestContext : IAsyncDisposable
                 ExpirationMode: expirationMode,
                 InitialExpirationDate: initialExpirationDate),
             stock);
+
+    public async Task<InventoryDocumentLineInput> CreateSaleLineAsync(
+        Product product,
+        decimal quantity,
+        decimal unitPrice,
+        string? lotCode = null)
+    {
+        var lots = await Lots.GetLotsAsync(Business.Id, product.Id);
+        var lot = lotCode is null
+            ? lots.FirstOrDefault(item => item.Quantity > 0)
+            : lots.FirstOrDefault(item => string.Equals(item.LotCode, lotCode, StringComparison.OrdinalIgnoreCase));
+        if (lot is null)
+        {
+            throw new InvalidOperationException($"No se encontró un lote disponible para {product.Sku}.");
+        }
+
+        return new InventoryDocumentLineInput(product.Id, quantity, unitPrice, LotId: lot.Id);
+    }
 
     public Task<Supplier> CreateSupplierAsync(string company) =>
         Suppliers.SaveAsync(

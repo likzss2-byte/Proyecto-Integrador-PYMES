@@ -33,7 +33,6 @@ public sealed class InventoryLotService
         CancellationToken cancellationToken = default)
     {
         var quantity = InventoryRules.NormalizeQuantity(input.Quantity);
-        ValidateLotDates(input.ExpirationMode, input.ManufacturingDate, input.ExpirationDate);
         if (input.UnitCost < 0)
         {
             throw new InventoryRuleException("El costo unitario no puede ser negativo.");
@@ -54,6 +53,13 @@ public sealed class InventoryLotService
                 throw new InventoryRuleException("El proveedor no existe o está inactivo.");
             }
 
+            var productExpirationMode = (ExpirationMode)row.ExpirationMode;
+            if (input.ExpirationMode != productExpirationMode)
+            {
+                throw new InventoryRuleException(
+                    "El modo de caducidad pertenece al producto. Modifícalo desde la ficha del producto antes de registrar el lote.");
+            }
+            ValidateLotDates(productExpirationMode, input.ManufacturingDate, input.ExpirationDate);
             InventoryRules.ValidateQuantity(quantity, (UnitOfMeasure)row.UnitOfMeasure);
             var product = row.ToDomain();
             var resulting = InventoryRules.NormalizeQuantity(product.Stock + quantity);
@@ -63,7 +69,7 @@ public sealed class InventoryLotService
                 connection,
                 input.ProductId,
                 quantity,
-                input.ExpirationMode == ExpirationMode.Tracked ? input.ExpirationDate : null,
+                productExpirationMode == ExpirationMode.Tracked ? input.ExpirationDate : null,
                 input.LotCode,
                 now,
                 input.SupplierId,
@@ -72,9 +78,8 @@ public sealed class InventoryLotService
                 input.PurchaseOrderId,
                 input.ReceiptId);
             connection.Execute(
-                "UPDATE products SET stock_milli=?,expiration_mode=?,updated_at=? WHERE id=?;",
+                "UPDATE products SET stock_milli=?,updated_at=? WHERE id=?;",
                 SqliteValues.ToMilli(resulting),
-                (int)input.ExpirationMode,
                 now,
                 input.ProductId);
             var movementId = ProductRepository.InsertMovement(
@@ -145,18 +150,219 @@ public sealed class InventoryLotService
 
             var rows = connection.Query<LotRow>(
                 """
-                SELECT l.id Id,l.product_id ProductId,l.supplier_id SupplierId,s.company_name SupplierName,
+                SELECT l.id Id,l.product_id ProductId,p.name ProductName,COALESCE(p.barcode,'ID ' || p.id) ProductCode,p.expiration_mode ProductExpirationMode,
+                       l.supplier_id SupplierId,s.company_name SupplierName,
                        l.lot_code LotCode,l.manufacturing_date ManufacturingDate,l.quantity_milli QuantityMilli,
                        l.initial_quantity_milli InitialQuantityMilli,l.unit_cost_basis UnitCostBasis,
                        l.expiration_date ExpirationDate,l.received_at ReceivedAt,l.status Status,
                        l.purchase_order_id PurchaseOrderId,l.receipt_id ReceiptId,l.created_at CreatedAt,l.updated_at UpdatedAt
-                FROM inventory_lots l LEFT JOIN suppliers s ON s.id=l.supplier_id
-                WHERE l.product_id=?
+                FROM inventory_lots l
+                JOIN products p ON p.id=l.product_id
+                LEFT JOIN suppliers s ON s.id=l.supplier_id
+                WHERE l.product_id=? AND p.business_id=?
                 ORDER BY CASE WHEN l.expiration_date IS NULL THEN 1 ELSE 0 END,l.expiration_date,l.received_at,l.id;
                 """,
-                productId);
+                productId,
+                businessId);
             return rows.Select(MapLot).ToArray();
         }, cancellationToken);
+
+    public Task<InventoryLot?> GetAsync(
+        long businessId,
+        long lotId,
+        CancellationToken cancellationToken = default) =>
+        _database.ReadAsync(connection =>
+        {
+            var row = QueryLot(connection, businessId, lotId);
+            return row is null ? null : MapLot(row);
+        }, cancellationToken);
+
+    public Task<IReadOnlyList<InventoryLot>> GetAllAsync(
+        long businessId,
+        string? search = null,
+        int limit = 300,
+        CancellationToken cancellationToken = default) =>
+        _database.ReadAsync<IReadOnlyList<InventoryLot>>(connection =>
+        {
+            var normalized = (search ?? string.Empty).Trim();
+            var term = $"%{normalized}%";
+            var rows = connection.Query<LotRow>(
+                """
+                SELECT l.id Id,l.product_id ProductId,p.name ProductName,COALESCE(p.barcode,'ID ' || p.id) ProductCode,p.expiration_mode ProductExpirationMode,
+                       l.supplier_id SupplierId,s.company_name SupplierName,
+                       l.lot_code LotCode,l.manufacturing_date ManufacturingDate,l.quantity_milli QuantityMilli,
+                       l.initial_quantity_milli InitialQuantityMilli,l.unit_cost_basis UnitCostBasis,
+                       l.expiration_date ExpirationDate,l.received_at ReceivedAt,l.status Status,
+                       l.purchase_order_id PurchaseOrderId,l.receipt_id ReceiptId,l.created_at CreatedAt,l.updated_at UpdatedAt
+                FROM inventory_lots l
+                JOIN products p ON p.id=l.product_id
+                LEFT JOIN suppliers s ON s.id=l.supplier_id
+                WHERE p.business_id=?
+                  AND (?='' OR p.name LIKE ? OR p.barcode LIKE ? OR l.lot_code LIKE ? OR s.company_name LIKE ?)
+                ORDER BY l.received_at DESC,l.id DESC
+                LIMIT ?;
+                """,
+                businessId,
+                normalized,
+                term,
+                term,
+                term,
+                term,
+                limit);
+            return rows.Select(MapLot).ToArray();
+        }, cancellationToken);
+
+    public Task<InventoryLot> UpdateAsync(
+        long businessId,
+        long lotId,
+        InventoryLotUpdateInput input,
+        CancellationToken cancellationToken = default) =>
+        _database.WriteAsync(connection =>
+        {
+            var existing = QueryLot(connection, businessId, lotId)
+                ?? throw new InventoryRuleException("El lote no existe.");
+            var product = ProductRepository.GetRow(connection, businessId, existing.ProductId)
+                ?? throw new InventoryRuleException("El producto del lote ya no existe.");
+            var expirationMode = (ExpirationMode)product.ExpirationMode;
+            ValidateLotDates(expirationMode, input.ManufacturingDate, input.ExpirationDate);
+            var expiration = expirationMode == ExpirationMode.Tracked ? input.ExpirationDate : null;
+            if (input.UnitCost < 0)
+            {
+                throw new InventoryRuleException("El costo unitario no puede ser negativo.");
+            }
+
+            if (input.SupplierId.HasValue)
+            {
+                var supplier = SupplierRepository.GetRow(connection, businessId, input.SupplierId.Value)
+                    ?? throw new InventoryRuleException("El proveedor no existe.");
+                if (supplier.Active != 1 && input.SupplierId != existing.SupplierId)
+                {
+                    throw new InventoryRuleException("No se puede asignar un proveedor archivado a un lote nuevo.");
+                }
+            }
+
+            var lotCode = ProductRepository.DbText(input.LotCode) as string;
+            if (lotCode is not null && connection.ExecuteScalar<int>(
+                    "SELECT COUNT(*) FROM inventory_lots WHERE product_id=? AND lot_code=? COLLATE NOCASE AND id<>?;",
+                    existing.ProductId,
+                    lotCode,
+                    lotId) > 0)
+            {
+                throw new InventoryRuleException("Ya existe otro lote de este producto con el mismo código.");
+            }
+
+            var now = SqliteValues.Date(DateTime.UtcNow);
+            connection.Execute(
+                """
+                UPDATE inventory_lots
+                SET lot_code=?,supplier_id=?,manufacturing_date=?,expiration_date=?,unit_cost_basis=?,updated_at=?
+                WHERE id=?;
+                """,
+                lotCode,
+                input.SupplierId,
+                input.ManufacturingDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                expiration?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                input.UnitCost.HasValue ? SqliteValues.ToMoney(input.UnitCost.Value) : null,
+                now,
+                lotId);
+            InventoryLotPersistence.LinkSupplier(
+                connection,
+                existing.ProductId,
+                input.SupplierId,
+                input.UnitCost,
+                now);
+            return MapLot(QueryLot(connection, businessId, lotId)!);
+        }, cancellationToken);
+
+    public Task<InventoryLot> AdjustQuantityAsync(
+        long businessId,
+        InventoryLotAdjustmentInput input,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(input.Reason))
+        {
+            throw new InventoryRuleException("El motivo del ajuste es obligatorio.");
+        }
+
+        var change = InventoryRules.NormalizeQuantity(input.QuantityChange);
+        if (change == 0)
+        {
+            throw new InventoryRuleException("El ajuste debe ser diferente de cero.");
+        }
+
+        return _database.WriteAsync(connection =>
+        {
+            var lot = QueryLot(connection, businessId, input.LotId)
+                ?? throw new InventoryRuleException("El lote no existe.");
+            var productRow = ProductRepository.GetRow(connection, businessId, lot.ProductId)
+                ?? throw new InventoryRuleException("El producto del lote ya no existe.");
+            InventoryRules.ValidateQuantity(decimal.Abs(change), (UnitOfMeasure)productRow.UnitOfMeasure, "El ajuste");
+            var currentLotQuantity = SqliteValues.FromMilli(lot.QuantityMilli);
+            var resultingLot = InventoryRules.NormalizeQuantity(currentLotQuantity + change);
+            if (resultingLot < 0)
+            {
+                throw new InventoryRuleException($"El lote solo tiene {currentLotQuantity:0.###} disponibles.");
+            }
+
+            var product = productRow.ToDomain();
+            var resultingStock = InventoryRules.NormalizeQuantity(product.Stock + change);
+            if (resultingStock < 0)
+            {
+                throw new InventoryRuleException("El ajuste dejaría el inventario total en negativo.");
+            }
+
+            var now = SqliteValues.Date(DateTime.UtcNow);
+            connection.Execute(
+                """
+                UPDATE inventory_lots
+                SET quantity_milli=?,status=CASE WHEN ?=0 THEN 1 ELSE 0 END,updated_at=?
+                WHERE id=?;
+                """,
+                SqliteValues.ToMilli(resultingLot),
+                SqliteValues.ToMilli(resultingLot),
+                now,
+                input.LotId);
+            connection.Execute(
+                "UPDATE products SET stock_milli=?,updated_at=? WHERE id=?;",
+                SqliteValues.ToMilli(resultingStock),
+                now,
+                product.Id);
+            var movementId = ProductRepository.InsertMovement(
+                connection,
+                businessId,
+                product.Id,
+                change > 0 ? InventoryMovementType.PositiveAdjustment : InventoryMovementType.NegativeAdjustment,
+                change,
+                product.Stock,
+                resultingStock,
+                $"AJUSTE-LOTE-{input.LotId}-{DateTime.UtcNow:yyyyMMddHHmmss}",
+                input.Reason.Trim(),
+                now);
+            InventoryLotPersistence.RecordMovementAllocations(
+                connection,
+                movementId,
+                [new LotAllocation(input.LotId, decimal.Abs(change))]);
+            return MapLot(QueryLot(connection, businessId, input.LotId)!);
+        }, cancellationToken);
+    }
+
+    private static LotRow? QueryLot(SQLite.SQLiteConnection connection, long businessId, long lotId) =>
+        connection.Query<LotRow>(
+                """
+                SELECT l.id Id,l.product_id ProductId,p.name ProductName,COALESCE(p.barcode,'ID ' || p.id) ProductCode,p.expiration_mode ProductExpirationMode,
+                       l.supplier_id SupplierId,s.company_name SupplierName,
+                       l.lot_code LotCode,l.manufacturing_date ManufacturingDate,l.quantity_milli QuantityMilli,
+                       l.initial_quantity_milli InitialQuantityMilli,l.unit_cost_basis UnitCostBasis,
+                       l.expiration_date ExpirationDate,l.received_at ReceivedAt,l.status Status,
+                       l.purchase_order_id PurchaseOrderId,l.receipt_id ReceiptId,l.created_at CreatedAt,l.updated_at UpdatedAt
+                FROM inventory_lots l
+                JOIN products p ON p.id=l.product_id
+                LEFT JOIN suppliers s ON s.id=l.supplier_id
+                WHERE l.id=? AND p.business_id=? LIMIT 1;
+                """,
+                lotId,
+                businessId)
+            .FirstOrDefault();
 
     public Task<IReadOnlyList<ExpirationAlert>> GetAlertsAsync(
         long businessId,
@@ -235,7 +441,7 @@ public sealed class InventoryLotService
         {
             var rows = connection.Query<AlertRow>(
                 """
-                SELECT p.id ProductId,p.name ProductName,COALESCE(p.barcode,p.sku) Code,l.lot_code LotCode,
+                SELECT p.id ProductId,p.name ProductName,COALESCE(p.barcode,'ID ' || p.id) Code,l.lot_code LotCode,
                        l.quantity_milli QuantityMilli,p.unit_of_measure UnitOfMeasure,l.expiration_date ExpirationDate,
                        s.company_name SupplierName
                 FROM inventory_lots l
@@ -268,6 +474,9 @@ public sealed class InventoryLotService
     {
         Id = row.Id,
         ProductId = row.ProductId,
+        ProductName = row.ProductName,
+        ProductCode = row.ProductCode,
+        ProductExpirationMode = (ExpirationMode)row.ProductExpirationMode,
         SupplierId = row.SupplierId,
         SupplierName = row.SupplierName,
         LotCode = row.LotCode,
@@ -318,6 +527,9 @@ public sealed class InventoryLotService
     {
         public long Id { get; set; }
         public long ProductId { get; set; }
+        public string ProductName { get; set; } = string.Empty;
+        public string ProductCode { get; set; } = string.Empty;
+        public int ProductExpirationMode { get; set; }
         public long? SupplierId { get; set; }
         public string? SupplierName { get; set; }
         public string? LotCode { get; set; }

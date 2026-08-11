@@ -1,0 +1,15 @@
+C:\Users\Espon\Downloads\Proyecto-Integrador-PYMES-main\src\InventorySystem.Infrastructure\bin\Debug\net10.0\InventorySystem.Infrastructure.deps.json
+C:\Users\Espon\Downloads\Proyecto-Integrador-PYMES-main\src\InventorySystem.Infrastructure\bin\Debug\net10.0\InventorySystem.Infrastructure.dll
+C:\Users\Espon\Downloads\Proyecto-Integrador-PYMES-main\src\InventorySystem.Infrastructure\bin\Debug\net10.0\InventorySystem.Infrastructure.pdb
+C:\Users\Espon\Downloads\Proyecto-Integrador-PYMES-main\src\InventorySystem.Infrastructure\bin\Debug\net10.0\InventorySystem.Domain.dll
+C:\Users\Espon\Downloads\Proyecto-Integrador-PYMES-main\src\InventorySystem.Infrastructure\bin\Debug\net10.0\InventorySystem.Domain.pdb
+C:\Users\Espon\Downloads\Proyecto-Integrador-PYMES-main\src\InventorySystem.Infrastructure\obj\Debug\net10.0\InventorySystem.Infrastructure.csproj.AssemblyReference.cache
+C:\Users\Espon\Downloads\Proyecto-Integrador-PYMES-main\src\InventorySystem.Infrastructure\obj\Debug\net10.0\InventorySystem.Infrastructure.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Espon\Downloads\Proyecto-Integrador-PYMES-main\src\InventorySystem.Infrastructure\obj\Debug\net10.0\InventorySystem.Infrastructure.AssemblyInfoInputs.cache
+C:\Users\Espon\Downloads\Proyecto-Integrador-PYMES-main\src\InventorySystem.Infrastructure\obj\Debug\net10.0\InventorySystem.Infrastructure.AssemblyInfo.cs
+C:\Users\Espon\Downloads\Proyecto-Integrador-PYMES-main\src\InventorySystem.Infrastructure\obj\Debug\net10.0\InventorySystem.Infrastructure.csproj.CoreCompileInputs.cache
+C:\Users\Espon\Downloads\Proyecto-Integrador-PYMES-main\src\InventorySystem.Infrastructure\obj\Debug\net10.0\Inventor.396E51AD.Up2Date
+C:\Users\Espon\Downloads\Proyecto-Integrador-PYMES-main\src\InventorySystem.Infrastructure\obj\Debug\net10.0\InventorySystem.Infrastructure.dll
+C:\Users\Espon\Downloads\Proyecto-Integrador-PYMES-main\src\InventorySystem.Infrastructure\obj\Debug\net10.0\refint\InventorySystem.Infrastructure.dll
+C:\Users\Espon\Downloads\Proyecto-Integrador-PYMES-main\src\InventorySystem.Infrastructure\obj\Debug\net10.0\InventorySystem.Infrastructure.pdb
+C:\Users\Espon\Downloads\Proyecto-Integrador-PYMES-main\src\InventorySystem.Infrastructure\obj\Debug\net10.0\ref\InventorySystem.Infrastructure.dll

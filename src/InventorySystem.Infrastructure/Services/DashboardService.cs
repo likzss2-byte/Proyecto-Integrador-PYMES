@@ -23,7 +23,7 @@ public sealed class DashboardService
         {
             var rows = connection.Query<MinimumStockRow>(
                 """
-                SELECT id ProductId,name ProductName,COALESCE(barcode,sku) Code,stock_milli StockMilli,
+                SELECT id ProductId,name ProductName,COALESCE(barcode,'ID ' || id) Code,stock_milli StockMilli,
                        minimum_stock_milli MinimumStockMilli,unit_of_measure UnitOfMeasure
                 FROM products
                 WHERE business_id=? AND active=1 AND stock_milli<=minimum_stock_milli
@@ -56,22 +56,8 @@ public sealed class DashboardService
             .ConfigureAwait(false);
         var expired = await _lots.GetExpiredAsync(businessId, cancellationToken: cancellationToken)
             .ConfigureAwait(false);
-        var counts = await _database.ReadAsync(connection =>
-        {
-            var pending = connection.ExecuteScalar<int>(
-                "SELECT COUNT(*) FROM purchase_orders WHERE business_id=? AND status IN (?,?);",
-                businessId,
-                (int)PurchaseOrderStatus.Pending,
-                (int)PurchaseOrderStatus.Confirmed);
-            var partial = connection.ExecuteScalar<int>(
-                "SELECT COUNT(*) FROM purchase_orders WHERE business_id=? AND status=?;",
-                businessId,
-                (int)PurchaseOrderStatus.PartiallyReceived);
-            return (pending, partial);
-        }, cancellationToken).ConfigureAwait(false);
-
         return new InventoryDashboard(
-            new DashboardSummary(minimumStock.Count, expiring.Count, expired.Count, counts.pending, counts.partial),
+            new DashboardSummary(minimumStock.Count, expiring.Count, expired.Count, 0, 0),
             minimumStock,
             expiring,
             expired);

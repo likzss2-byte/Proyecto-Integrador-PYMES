@@ -76,22 +76,32 @@ public sealed class InventoryTransactionService
                     var lotId = InventoryLotPersistence.Add(
                         connection,
                         change.Product.Id,
-                        change.SignedQuantity,
+                        change.Line.Quantity,
                         change.Line.ExpirationDate,
                         change.Line.LotCode ?? document.Reference,
                         now,
                         document.SupplierId,
                         change.Line.ManufacturingDate,
                         change.Line.UnitPrice);
-                    allocations = [new LotAllocation(lotId, change.SignedQuantity)];
+                    connection.Execute(
+                        "UPDATE inventory_document_lines SET lot_id=? WHERE id=?;",
+                        lotId,
+                        change.Line.Id);
+                    change.Line.LotId = lotId;
+                    allocations = [new LotAllocation(lotId, change.Line.Quantity)];
                 }
                 else
                 {
-                    allocations = InventoryLotPersistence.ApplyStockChange(
+                    if (!change.Line.LotId.HasValue)
+                    {
+                        throw new InventoryRuleException($"Selecciona un lote para {change.Product.Name}.");
+                    }
+
+                    allocations = InventoryLotPersistence.ConsumeSelected(
                         connection,
                         change.Product.Id,
-                        change.SignedQuantity,
-                        document.Reference,
+                        change.Line.LotId.Value,
+                        change.Line.Quantity,
                         now,
                         allowExpiredLots);
                 }
@@ -102,7 +112,7 @@ public sealed class InventoryTransactionService
                     change.Product.Id,
                     change.MovementType,
                     change.SignedQuantity,
-                    change.Product.Stock,
+                    change.PreviousStock,
                     change.ResultingStock,
                     document.Reference,
                     document.Notes,
@@ -159,15 +169,25 @@ public sealed class InventoryTransactionService
             var now = SqliteValues.Date(DateTime.UtcNow);
             foreach (var change in changes)
             {
-                var originalType = document.Type == InventoryDocumentType.Entry
-                    ? InventoryMovementType.Entry
-                    : InventoryMovementType.Sale;
-                var allocations = InventoryLotPersistence.GetMovementAllocations(
-                    connection,
-                    businessId,
-                    change.Product.Id,
-                    document.Reference,
-                    originalType);
+                IReadOnlyList<LotAllocation> allocations;
+                if (change.Line.LotId.HasValue)
+                {
+                    allocations = [new LotAllocation(change.Line.LotId.Value, change.Line.Quantity)];
+                }
+                else
+                {
+                    // Compatibilidad con documentos creados antes de que las líneas guardaran el lote.
+                    var originalType = document.Type == InventoryDocumentType.Entry
+                        ? InventoryMovementType.Entry
+                        : InventoryMovementType.Sale;
+                    allocations = InventoryLotPersistence.GetMovementAllocations(
+                        connection,
+                        businessId,
+                        change.Product.Id,
+                        document.Reference,
+                        originalType);
+                }
+
                 if (allocations.Count == 0)
                 {
                     allocations = InventoryLotPersistence.ApplyStockChange(
@@ -188,13 +208,24 @@ public sealed class InventoryTransactionService
                 }
 
                 UpdateStock(connection, change.Product.Id, change.ResultingStock, now);
+                if (document.Type == InventoryDocumentType.Sale)
+                {
+                    // Si el producto se archivó usando "Eliminar" después de la venta,
+                    // al cancelar esa venta vuelve a estar disponible en el inventario.
+                    // Los productos desactivados manualmente no se tocan.
+                    connection.Execute(
+                        "UPDATE products SET active=1,archived_by_delete=0,updated_at=? WHERE id=? AND archived_by_delete=1;",
+                        now,
+                        change.Product.Id);
+                }
+
                 var movementId = ProductRepository.InsertMovement(
                     connection,
                     businessId,
                     change.Product.Id,
                     change.MovementType,
                     change.SignedQuantity,
-                    change.Product.Stock,
+                    change.PreviousStock,
                     change.ResultingStock,
                     document.Reference,
                     reason.Trim(),
@@ -266,11 +297,6 @@ public sealed class InventoryTransactionService
             throw new InventoryRuleException("La operación debe incluir al menos un producto.");
         }
 
-        if (requestedLines.GroupBy(line => line.ProductId).Any(group => group.Count() > 1))
-        {
-            throw new InventoryRuleException("La operación contiene productos repetidos.");
-        }
-
         return _database.WriteAsync(connection =>
         {
             if (supplierId.HasValue && SupplierRepository.GetRow(connection, businessId, supplierId.Value) is null)
@@ -295,22 +321,51 @@ public sealed class InventoryTransactionService
                     throw new InventoryRuleException("El costo o precio unitario no puede ser negativo.");
                 }
 
+                string? lotCode = string.IsNullOrWhiteSpace(line.LotCode) ? null : line.LotCode.Trim();
+                DateOnly? manufacturingDate = line.ManufacturingDate;
+                DateOnly? expirationDate = line.ExpirationDate;
+                long? lotId = line.LotId;
                 if (type == InventoryDocumentType.Entry)
                 {
-                    ValidateEntryLot(
-                        (ExpirationMode)product.ExpirationMode,
-                        line.ManufacturingDate,
-                        line.ExpirationDate,
-                        product.Name);
+                    var expirationMode = (ExpirationMode)product.ExpirationMode;
+                    ValidateEntryLot(expirationMode, manufacturingDate, expirationDate, product.Name);
+                    if (expirationMode == ExpirationMode.NotApplicable)
+                    {
+                        expirationDate = null;
+                    }
+                    lotId = null;
+                }
+                else
+                {
+                    if (!lotId.HasValue)
+                    {
+                        throw new InventoryRuleException($"Selecciona un lote para {product.Name}.");
+                    }
+
+                    var selectedLot = connection.Query<SaleLotRow>(
+                            """
+                            SELECT id Id,lot_code LotCode,manufacturing_date ManufacturingDate,expiration_date ExpirationDate
+                            FROM inventory_lots WHERE id=? AND product_id=? LIMIT 1;
+                            """,
+                            lotId.Value,
+                            line.ProductId)
+                        .FirstOrDefault()
+                        ?? throw new InventoryRuleException($"El lote seleccionado de {product.Name} ya no existe.");
+                    lotCode = selectedLot.LotCode;
+                    manufacturingDate = ParseDateOnly(selectedLot.ManufacturingDate);
+                    expirationDate = (ExpirationMode)product.ExpirationMode == ExpirationMode.Tracked
+                        ? ParseDateOnly(selectedLot.ExpirationDate)
+                        : null;
                 }
 
                 normalizedLines.Add(new InventoryDocumentLineInput(
                     line.ProductId,
                     quantity,
                     decimal.Round(line.UnitPrice, 4, MidpointRounding.AwayFromZero),
-                    string.IsNullOrWhiteSpace(line.LotCode) ? null : line.LotCode.Trim(),
-                    line.ManufacturingDate,
-                    line.ExpirationDate));
+                    lotCode,
+                    manufacturingDate,
+                    expirationDate,
+                    lotId));
             }
 
             var total = normalizedLines.Sum(line => line.Quantity * line.UnitPrice);
@@ -348,11 +403,12 @@ public sealed class InventoryTransactionService
                 connection.Execute(
                     """
                     INSERT INTO inventory_document_lines(
-                        document_id,product_id,quantity_milli,unit_price_basis,lot_code,manufacturing_date,expiration_date)
-                    VALUES(?,?,?,?,?,?,?);
+                        document_id,product_id,lot_id,quantity_milli,unit_price_basis,lot_code,manufacturing_date,expiration_date)
+                    VALUES(?,?,?,?,?,?,?,?);
                     """,
                     id,
                     line.ProductId,
+                    line.LotId,
                     SqliteValues.ToMilli(line.Quantity),
                     SqliteValues.ToMoney(line.UnitPrice),
                     ProductRepository.DbText(line.LotCode),
@@ -371,22 +427,26 @@ public sealed class InventoryTransactionService
         bool allowNegative)
     {
         var changes = new List<StockChange>(document.Lines.Count);
+        var runningStocks = new Dictionary<long, decimal>();
         foreach (var line in document.Lines)
         {
             var productRow = ProductRepository.GetRow(connection, document.BusinessId, line.ProductId)
                 ?? throw new InventoryRuleException("Uno de los productos ya no existe.");
-            if (productRow.Active != 1)
+            if (!cancelling && productRow.Active != 1)
             {
                 throw new InventoryRuleException($"El producto {productRow.Name} está inactivo.");
             }
 
             var product = productRow.ToDomain();
+            var previousStock = runningStocks.TryGetValue(product.Id, out var running)
+                ? running
+                : product.Stock;
             var addStock = document.Type == InventoryDocumentType.Entry ^ cancelling;
             var signedQuantity = addStock ? line.Quantity : -line.Quantity;
-            var resulting = InventoryRules.NormalizeQuantity(product.Stock + signedQuantity);
+            var resulting = InventoryRules.NormalizeQuantity(previousStock + signedQuantity);
             if (!allowNegative && resulting < 0)
             {
-                throw new InventoryRuleException($"Stock insuficiente para {product.Name}. Disponible: {product.Stock:0.###}.");
+                throw new InventoryRuleException($"Stock insuficiente para {product.Name}. Disponible: {previousStock:0.###}.");
             }
 
             var movementType = (document.Type, cancelling) switch
@@ -396,7 +456,8 @@ public sealed class InventoryTransactionService
                 (InventoryDocumentType.Sale, false) => InventoryMovementType.Sale,
                 _ => InventoryMovementType.SaleCancellation
             };
-            changes.Add(new StockChange(product, line, signedQuantity, resulting, movementType));
+            changes.Add(new StockChange(product, line, signedQuantity, previousStock, resulting, movementType));
+            runningStocks[product.Id] = resulting;
         }
 
         return changes;
@@ -426,9 +487,15 @@ public sealed class InventoryTransactionService
     {
         var lines = connection.Query<DocumentLineRow>(
             """
-            SELECT id Id,document_id DocumentId,product_id ProductId,quantity_milli QuantityMilli,unit_price_basis UnitPriceBasis,
-                   lot_code LotCode,manufacturing_date ManufacturingDate,expiration_date ExpirationDate
-            FROM inventory_document_lines WHERE document_id=? ORDER BY id;
+            SELECT dl.id Id,dl.document_id DocumentId,dl.product_id ProductId,p.name ProductName,dl.lot_id LotId,
+                   dl.quantity_milli QuantityMilli,dl.unit_price_basis UnitPriceBasis,
+                   COALESCE(dl.lot_code,l.lot_code) LotCode,
+                   COALESCE(dl.manufacturing_date,l.manufacturing_date) ManufacturingDate,
+                   COALESCE(dl.expiration_date,l.expiration_date) ExpirationDate
+            FROM inventory_document_lines dl
+            JOIN products p ON p.id=dl.product_id
+            LEFT JOIN inventory_lots l ON l.id=dl.lot_id
+            WHERE dl.document_id=? ORDER BY dl.id;
             """,
             row.Id);
         return new InventoryDocument
@@ -450,6 +517,8 @@ public sealed class InventoryTransactionService
                 Id = line.Id,
                 DocumentId = line.DocumentId,
                 ProductId = line.ProductId,
+                ProductName = line.ProductName,
+                LotId = line.LotId,
                 Quantity = SqliteValues.FromMilli(line.QuantityMilli),
                 UnitPrice = SqliteValues.FromMoney(line.UnitPriceBasis),
                 LotCode = line.LotCode,
@@ -491,10 +560,23 @@ public sealed class InventoryTransactionService
         }
     }
 
+    private static DateOnly? ParseDateOnly(string? value) => value is null
+        ? null
+        : DateOnly.ParseExact(value, "yyyy-MM-dd", CultureInfo.InvariantCulture);
+
+    private sealed class SaleLotRow
+    {
+        public long Id { get; set; }
+        public string? LotCode { get; set; }
+        public string? ManufacturingDate { get; set; }
+        public string? ExpirationDate { get; set; }
+    }
+
     private sealed record StockChange(
         Product Product,
         InventoryDocumentLine Line,
         decimal SignedQuantity,
+        decimal PreviousStock,
         decimal ResultingStock,
         InventoryMovementType MovementType);
 }

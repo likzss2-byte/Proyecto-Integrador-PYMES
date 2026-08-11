@@ -47,13 +47,12 @@ public sealed class InventoryCatalogService
                 JOIN product_suppliers ps ON ps.product_id=p.id AND ps.active=1
                 JOIN suppliers s ON s.id=ps.supplier_id AND s.active=1
                 WHERE p.business_id=? AND p.active=1 AND s.id=?
-                  AND (?='' OR p.name LIKE ? OR p.sku LIKE ? OR p.barcode LIKE ? OR p.brand LIKE ?)
+                  AND (?='' OR p.name LIKE ? OR p.barcode LIKE ? OR p.brand LIKE ?)
                 ORDER BY p.name COLLATE NOCASE,p.id;
                 """,
                 businessId,
                 supplierId,
                 (search ?? string.Empty).Trim(),
-                term,
                 term,
                 term,
                 term);
