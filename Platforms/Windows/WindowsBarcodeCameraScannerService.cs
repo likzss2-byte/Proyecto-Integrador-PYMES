@@ -18,6 +18,7 @@ public sealed class WindowsBarcodeCameraScannerService : IBarcodeCameraScannerSe
 {
     private readonly BarcodeScannerService _decoder;
     private readonly SemaphoreSlim _decodeLock = new(1, 1);
+    private readonly SemaphoreSlim _lifecycleLock = new(1, 1);
     private MediaCapture? _mediaCapture;
     private MediaFrameReader? _frameReader;
     private MediaFrameSourceGroup? _activeGroup;
@@ -29,8 +30,9 @@ public sealed class WindowsBarcodeCameraScannerService : IBarcodeCameraScannerSe
     private long _lastPreviewTicks;
     private int _previewUpdateQueued;
     private int _previewFramePresented;
-    private bool _resultDelivered;
-    private bool _stopping;
+    private int _resultDelivered;
+    private int _stopping = 1;
+    private int _sessionVersion;
 
     public WindowsBarcodeCameraScannerService(BarcodeScannerService decoder)
     {
@@ -128,94 +130,145 @@ public sealed class WindowsBarcodeCameraScannerService : IBarcodeCameraScannerSe
         Action<string> onStatus,
         CancellationToken cancellationToken = default)
     {
-        await StopAsync();
-        if (preview.Handler?.PlatformView is not WinUIImage image)
-        {
-            throw new InvalidOperationException("La vista previa de Windows no está lista.");
-        }
-
-        _previewImage = image;
-        _dispatcherQueue = image.DispatcherQueue;
-        _onDetected = onDetected;
-        _onStatus = onStatus;
-        _resultDelivered = false;
-        _stopping = false;
-        Interlocked.Exchange(ref _previewFramePresented, 0);
-
-        var groups = await MediaFrameSourceGroup.FindAllAsync();
-        _activeGroup = groups.FirstOrDefault(group => group.Id == cameraId)
-            ?? groups.FirstOrDefault(group => group.SourceInfos.Any(info => info.DeviceInformation?.Id == cameraId))
-            ?? throw new InvalidOperationException("La cámara seleccionada se desconectó.");
-
-        _mediaCapture = new MediaCapture();
-        var settings = new MediaCaptureInitializationSettings
-        {
-            SourceGroup = _activeGroup,
-            SharingMode = MediaCaptureSharingMode.SharedReadOnly,
-            StreamingCaptureMode = StreamingCaptureMode.Video,
-            MemoryPreference = MediaCaptureMemoryPreference.Cpu
-        };
-
+        await _lifecycleLock.WaitAsync(cancellationToken);
         try
         {
-            await _mediaCapture.InitializeAsync(settings);
+            await StopCoreAsync();
+            cancellationToken.ThrowIfCancellationRequested();
+            if (preview.Handler?.PlatformView is not WinUIImage image)
+            {
+                throw new InvalidOperationException("La vista previa de Windows no está lista.");
+            }
+
+            _previewImage = image;
+            _dispatcherQueue = image.DispatcherQueue;
+            _onDetected = onDetected;
+            _onStatus = onStatus;
+            Interlocked.Exchange(ref _resultDelivered, 0);
+            Interlocked.Exchange(ref _stopping, 0);
+            Interlocked.Exchange(ref _previewUpdateQueued, 0);
+            Interlocked.Exchange(ref _previewFramePresented, 0);
+            Interlocked.Exchange(ref _lastDecodeTicks, 0);
+            Interlocked.Exchange(ref _lastPreviewTicks, 0);
+            Interlocked.Increment(ref _sessionVersion);
+
+            var groups = await MediaFrameSourceGroup.FindAllAsync();
+            cancellationToken.ThrowIfCancellationRequested();
+            _activeGroup = groups.FirstOrDefault(group => group.Id == cameraId)
+                ?? groups.FirstOrDefault(group => group.SourceInfos.Any(info => info.DeviceInformation?.Id == cameraId))
+                ?? throw new InvalidOperationException("La cámara seleccionada se desconectó.");
+
+            _mediaCapture = new MediaCapture();
+            var settings = new MediaCaptureInitializationSettings
+            {
+                SourceGroup = _activeGroup,
+                SharingMode = MediaCaptureSharingMode.SharedReadOnly,
+                StreamingCaptureMode = StreamingCaptureMode.Video,
+                MemoryPreference = MediaCaptureMemoryPreference.Cpu
+            };
+
+            try
+            {
+                await _mediaCapture.InitializeAsync(settings);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                await StopCoreAsync();
+                throw;
+            }
+            catch (Exception error)
+            {
+                await StopCoreAsync();
+                throw new InvalidOperationException("La cámara está ocupada o no pudo inicializarse.", error);
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+            var source = _mediaCapture.FrameSources.Values
+                .FirstOrDefault(item => item.Info.SourceKind == MediaFrameSourceKind.Color)
+                ?? throw new InvalidOperationException("La cámara no tiene un formato compatible.");
+
+            _frameReader = await _mediaCapture.CreateFrameReaderAsync(source, MediaEncodingSubtypes.Bgra8);
+            cancellationToken.ThrowIfCancellationRequested();
+            var frameReader = _frameReader;
+            frameReader.FrameArrived += FrameReader_FrameArrived;
+            var status = await frameReader.StartAsync();
+            if (status != MediaFrameReaderStartStatus.Success)
+            {
+                await StopCoreAsync();
+                throw new InvalidOperationException(status == MediaFrameReaderStartStatus.ExclusiveControlNotAvailable
+                    ? "La cámara está siendo utilizada por otra aplicación."
+                    : "No pudimos iniciar la lectura de la cámara.");
+            }
+
+            _onStatus?.Invoke("Coloca el código dentro del recuadro.");
         }
-        catch (UnauthorizedAccessException)
+        catch
         {
+            await StopCoreAsync();
             throw;
         }
-        catch (Exception error)
+        finally
         {
-            throw new InvalidOperationException("La cámara está ocupada o no pudo inicializarse.", error);
+            _lifecycleLock.Release();
         }
-
-        var source = _mediaCapture.FrameSources.Values
-            .FirstOrDefault(item => item.Info.SourceKind == MediaFrameSourceKind.Color)
-            ?? throw new InvalidOperationException("La cámara no tiene un formato compatible.");
-
-        _frameReader = await _mediaCapture.CreateFrameReaderAsync(source, MediaEncodingSubtypes.Bgra8);
-        _frameReader.FrameArrived += FrameReader_FrameArrived;
-        var status = await _frameReader.StartAsync();
-        if (status != MediaFrameReaderStartStatus.Success)
-        {
-            throw new InvalidOperationException(status == MediaFrameReaderStartStatus.ExclusiveControlNotAvailable
-                ? "La cámara está siendo utilizada por otra aplicación."
-                : "No pudimos iniciar la lectura de la cámara.");
-        }
-
-        _onStatus?.Invoke("Coloca el código dentro del recuadro.");
     }
 
     public async Task StopAsync()
     {
-        _stopping = true;
-        if (_frameReader is not null)
+        await _lifecycleLock.WaitAsync();
+        try
         {
-            _frameReader.FrameArrived -= FrameReader_FrameArrived;
+            await StopCoreAsync();
+        }
+        finally
+        {
+            _lifecycleLock.Release();
+        }
+    }
+
+    private async Task StopCoreAsync()
+    {
+        Interlocked.Exchange(ref _stopping, 1);
+        Interlocked.Increment(ref _sessionVersion);
+
+        var frameReader = _frameReader;
+        _frameReader = null;
+        if (frameReader is not null)
+        {
+            frameReader.FrameArrived -= FrameReader_FrameArrived;
             try
             {
-                await _frameReader.StopAsync();
+                await frameReader.StopAsync();
             }
             catch
             {
             }
 
-            _frameReader.Dispose();
-            _frameReader = null;
+            frameReader.Dispose();
         }
 
-        _mediaCapture?.Dispose();
+        var mediaCapture = _mediaCapture;
         _mediaCapture = null;
+        mediaCapture?.Dispose();
         _activeGroup = null;
-        if (_previewImage is not null)
+
+        var previewImage = _previewImage;
+        var dispatcherQueue = _dispatcherQueue;
+        _previewImage = null;
+        _dispatcherQueue = null;
+        _onDetected = null;
+        _onStatus = null;
+
+        if (previewImage is not null)
         {
-            _dispatcherQueue?.TryEnqueue(() => _previewImage.Source = null);
+            dispatcherQueue?.TryEnqueue(() => previewImage.Source = null);
         }
     }
 
     private void FrameReader_FrameArrived(MediaFrameReader sender, MediaFrameArrivedEventArgs args)
     {
-        if (_stopping || _resultDelivered)
+        var sessionVersion = Volatile.Read(ref _sessionVersion);
+        if (Volatile.Read(ref _stopping) == 1 || Volatile.Read(ref _resultDelivered) == 1)
         {
             sender.TryAcquireLatestFrame()?.Dispose();
             return;
@@ -232,7 +285,7 @@ public sealed class WindowsBarcodeCameraScannerService : IBarcodeCameraScannerSe
         if (now - Interlocked.Read(ref _lastPreviewTicks) > 100)
         {
             Interlocked.Exchange(ref _lastPreviewTicks, now);
-            QueuePreviewUpdate(bitmap);
+            QueuePreviewUpdate(bitmap, sessionVersion);
         }
 
         if (now - Interlocked.Read(ref _lastDecodeTicks) < 160 || !_decodeLock.Wait(0))
@@ -259,15 +312,21 @@ public sealed class WindowsBarcodeCameraScannerService : IBarcodeCameraScannerSe
             {
                 var bytes = CopyBgraBytes(decodeBitmap);
                 var result = _decoder.DecodeBgra32(bytes, decodeBitmap.PixelWidth, decodeBitmap.PixelHeight, "WindowsCamera");
-                if (result.Success && !_resultDelivered)
+                if (result.Success &&
+                    sessionVersion == Volatile.Read(ref _sessionVersion) &&
+                    Interlocked.Exchange(ref _resultDelivered, 1) == 0)
                 {
-                    _resultDelivered = true;
-                    _onDetected?.Invoke(result);
+                    var onDetected = _onDetected;
+                    onDetected?.Invoke(result);
                 }
             }
             catch
             {
-                _onStatus?.Invoke("No pudimos leer el código. Prueba acercando o alejando la cámara.");
+                if (sessionVersion == Volatile.Read(ref _sessionVersion))
+                {
+                    var onStatus = _onStatus;
+                    onStatus?.Invoke("No pudimos leer el código. Prueba acercando o alejando la cámara.");
+                }
             }
             finally
             {
@@ -276,9 +335,11 @@ public sealed class WindowsBarcodeCameraScannerService : IBarcodeCameraScannerSe
         });
     }
 
-    private void QueuePreviewUpdate(SoftwareBitmap bitmap)
+    private void QueuePreviewUpdate(SoftwareBitmap bitmap, int sessionVersion)
     {
-        if (_dispatcherQueue is null || _previewImage is null || Interlocked.Exchange(ref _previewUpdateQueued, 1) == 1)
+        var dispatcherQueue = _dispatcherQueue;
+        var previewImage = _previewImage;
+        if (dispatcherQueue is null || previewImage is null || Interlocked.Exchange(ref _previewUpdateQueued, 1) == 1)
         {
             return;
         }
@@ -294,24 +355,30 @@ public sealed class WindowsBarcodeCameraScannerService : IBarcodeCameraScannerSe
             return;
         }
 
-        if (!_dispatcherQueue.TryEnqueue(async () =>
+        if (!dispatcherQueue.TryEnqueue(async () =>
         {
             try
             {
                 var source = new SoftwareBitmapSource();
                 await source.SetBitmapAsync(previewBitmap);
-                if (!_stopping && _previewImage is not null)
+                if (sessionVersion == Volatile.Read(ref _sessionVersion) &&
+                    Volatile.Read(ref _stopping) == 0)
                 {
-                    _previewImage.Source = source;
+                    previewImage.Source = source;
                     if (Interlocked.Exchange(ref _previewFramePresented, 1) == 0)
                     {
-                        _onStatus?.Invoke("Vista previa activa. Coloca el código dentro del recuadro.");
+                        var onStatus = _onStatus;
+                        onStatus?.Invoke("Vista previa activa. Coloca el código dentro del recuadro.");
                     }
                 }
             }
             catch
             {
-                _onStatus?.Invoke("La cámara está activa, pero no pudimos mostrar la vista previa.");
+                if (sessionVersion == Volatile.Read(ref _sessionVersion))
+                {
+                    var onStatus = _onStatus;
+                    onStatus?.Invoke("La cámara está activa, pero no pudimos mostrar la vista previa.");
+                }
             }
             finally
             {

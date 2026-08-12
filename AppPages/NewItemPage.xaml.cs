@@ -171,6 +171,19 @@ public partial class NewItemPage : ContentPage
             var expirationMode = ExpirationModePicker.SelectedIndex == 1
                 ? ExpirationMode.Tracked
                 : ExpirationMode.NotApplicable;
+            var referenceCost = ParseOptionalDecimal(
+                ReferenceCostEntry.Text,
+                "El costo unitario del proveedor no es válido.");
+            if (ProductSupplierPicker.SelectedItem is Supplier && !referenceCost.HasValue)
+            {
+                throw new InventoryRuleException("El costo unitario del proveedor es obligatorio.");
+            }
+
+            if (referenceCost is < 0)
+            {
+                throw new InventoryRuleException("El costo unitario del proveedor no puede ser negativo.");
+            }
+
             var input = new ProductInput(
                 null,
                 BarcodeEntry.Text,
@@ -187,7 +200,7 @@ public partial class NewItemPage : ContentPage
             {
                 await _suppliers.LinkProductAsync(
                     _businessId,
-                    new ProductSupplierInput(saved.Id, supplier.Id, null, null));
+                    new ProductSupplierInput(saved.Id, supplier.Id, null, referenceCost));
             }
 
             await DisplayAlertAsync("Producto", $"{saved.Name} se guardó correctamente.", "Aceptar");
@@ -200,6 +213,17 @@ public partial class NewItemPage : ContentPage
         finally
         {
             SaveProductButton.IsEnabled = true;
+        }
+    }
+
+    private void ProductSupplierPicker_SelectedIndexChanged(object? sender, EventArgs e)
+    {
+        var hasSupplier = ProductSupplierPicker.SelectedItem is Supplier;
+        ReferenceCostEntry.IsEnabled = hasSupplier;
+        ReferenceCostEntry.Placeholder = hasSupplier ? "0.00" : "Selecciona un proveedor";
+        if (!hasSupplier)
+        {
+            ReferenceCostEntry.Text = string.Empty;
         }
     }
 
@@ -226,6 +250,8 @@ public partial class NewItemPage : ContentPage
         SalePriceEntry.Text = string.Empty;
         ActiveSwitch.IsToggled = true;
         ProductSupplierPicker.SelectedItem = null;
+        ReferenceCostEntry.Text = string.Empty;
+        ReferenceCostEntry.IsEnabled = false;
         ClearValidationMessages();
         _readGuard.Reset("registro-producto");
     }
@@ -251,6 +277,7 @@ public partial class NewItemPage : ContentPage
         }
         else if (message.Contains("stock", StringComparison.OrdinalIgnoreCase) ||
                  message.Contains("precio", StringComparison.OrdinalIgnoreCase) ||
+                 message.Contains("costo", StringComparison.OrdinalIgnoreCase) ||
                  message.Contains("inventario", StringComparison.OrdinalIgnoreCase))
         {
             NumericErrorLabel.Text = message;

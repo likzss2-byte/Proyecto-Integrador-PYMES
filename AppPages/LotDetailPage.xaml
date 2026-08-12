@@ -20,22 +20,13 @@
                         </VerticalStackLayout>
                         <VerticalStackLayout Grid.Column="1" Spacing="4">
                             <Label Text="Proveedor" Style="{StaticResource FieldLabel}" />
-                            <Picker x:Name="SupplierPicker" Title="Sin proveedor" Style="{StaticResource FormPicker}" />
+                            <Picker x:Name="SupplierPicker" Style="{StaticResource FormPicker}" />
                         </VerticalStackLayout>
                     </Grid>
-                    <Grid ColumnDefinitions="*,*" ColumnSpacing="18">
-                        <VerticalStackLayout Spacing="4">
-                            <HorizontalStackLayout Spacing="8">
-                                <CheckBox x:Name="HasManufacturingDateCheck" CheckedChanged="HasManufacturingDateCheck_Changed" />
-                                <Label Text="Registrar fabricación" Style="{StaticResource FieldLabel}" VerticalOptions="Center" />
-                            </HorizontalStackLayout>
-                            <DatePicker x:Name="ManufacturingDatePicker" IsVisible="False" Style="{StaticResource FormDatePicker}" />
-                        </VerticalStackLayout>
-                        <VerticalStackLayout x:Name="ExpirationField" Grid.Column="1" Spacing="4">
-                            <Label Text="Fecha de caducidad *" Style="{StaticResource FieldLabel}" />
-                            <DatePicker x:Name="ExpirationDatePicker" Style="{StaticResource FormDatePicker}" />
-                        </VerticalStackLayout>
-                    </Grid>
+                    <VerticalStackLayout x:Name="ExpirationField" Spacing="4">
+                        <Label Text="Fecha de caducidad *" Style="{StaticResource FieldLabel}" />
+                        <DatePicker x:Name="ExpirationDatePicker" Style="{StaticResource FormDatePicker}" />
+                    </VerticalStackLayout>
                     <VerticalStackLayout x:Name="UnitCostDisplay" Spacing="2">
                         <Label Text="Costo unitario de recepción" Style="{StaticResource FieldLabel}" />
                         <Label x:Name="UnitCostLabel" />

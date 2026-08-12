@@ -11,25 +11,34 @@
                     <VerticalStackLayout Spacing="4">
                         <Label Text="Proveedor" Style="{StaticResource FieldLabel}" />
                         <Picker x:Name="SupplierPicker" Style="{StaticResource FormPicker}" Title="Selecciona un proveedor"
-                                ItemDisplayBinding="{Binding CompanyName}" />
+                                ItemDisplayBinding="{Binding CompanyName}"
+                                SelectedIndexChanged="SupplierPicker_SelectedIndexChanged" />
                     </VerticalStackLayout>
 
-                    <Border Style="{StaticResource FormSection}">
+                    <Border x:Name="ProductSection" Style="{StaticResource FormSection}">
                         <VerticalStackLayout Spacing="12">
-                            <Label Text="Agregar producto y lote" Style="{StaticResource SectionTitle}" />
+                            <Label x:Name="SupplierCatalogTitle" Text="Productos del inventario" Style="{StaticResource SectionTitle}" />
                             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
                                 <templates:SearchBar x:Name="ProductSearch" />
                                 <Button Grid.Column="1" Text="Escanear" Style="{StaticResource SecondaryButton}" Clicked="ScanCamera_Clicked" />
                             </Grid>
-                            <CollectionView x:Name="ProductSearchResults" HeightRequest="180" IsVisible="False" SelectionMode="Single"
-                                            SelectionChanged="ProductSearchResults_SelectionChanged">
+                            <Label Text="Selecciona un producto del catálogo. Esta lista es solo de consulta."
+                                   Style="{StaticResource HelperText}" />
+                            <CollectionView x:Name="ProductSearchResults" HeightRequest="220" SelectionMode="Single"
+                                             SelectionChanged="ProductSearchResults_SelectionChanged">
+                                <CollectionView.EmptyView>
+                                    <Label x:Name="CatalogEmptyLabel" Text="No hay productos que coincidan con la búsqueda."
+                                           Style="{StaticResource HelperText}" />
+                                </CollectionView.EmptyView>
                                 <CollectionView.ItemTemplate>
                                     <DataTemplate>
                                         <Border Style="{StaticResource ListRow}" Margin="0,2">
-                                            <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
-                                                <Label Text="{Binding Name}" FontAttributes="Bold" />
-                                                <Label Grid.Column="1" Text="{Binding DisplayStock}" />
-                                                <Label Grid.Row="1" Text="{Binding DisplayCode}" Style="{StaticResource HelperText}" />
+                                            <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto">
+                                                <Label Text="{Binding Product.Name}" FontAttributes="Bold" />
+                                                <Label Grid.Column="1" Text="{Binding Product.DisplayStock}" />
+                                                <Label Grid.Row="1" Text="{Binding Product.DisplayCode}" Style="{StaticResource HelperText}" />
+                                                <Label Grid.Row="2" Text="{Binding DisplayReferenceCost}"
+                                                       Style="{StaticResource HelperText}" />
                                             </Grid>
                                         </Border>
                                     </DataTemplate>
@@ -45,6 +54,8 @@
                                 <VerticalStackLayout Grid.Column="1" Spacing="4">
                                     <Label Text="Costo unitario *" Style="{StaticResource FieldLabel}" />
                                     <Entry x:Name="UnitCostEntry" Style="{StaticResource FormEntry}" Keyboard="Numeric" />
+                                    <Label x:Name="UnitCostHelpLabel" Text="Captura el costo correspondiente a esta entrada."
+                                           Style="{StaticResource HelperText}" />
                                 </VerticalStackLayout>
                             </Grid>
                             <Label Text="Código de lote" Style="{StaticResource FieldLabel}" />
@@ -60,8 +71,7 @@
                     </Border>
 
                     <CollectionView x:Name="LineList" MinimumHeightRequest="64" ItemSizingStrategy="MeasureAllItems"
-                                    VerticalScrollBarVisibility="Never">
-                        <CollectionView.EmptyView><Label Text="La entrada todavía no contiene productos." Style="{StaticResource HelperText}" /></CollectionView.EmptyView>
+                                     VerticalScrollBarVisibility="Never">
                         <CollectionView.ItemTemplate>
                             <DataTemplate>
                                 <Border Style="{StaticResource ListRow}" Margin="0,4">

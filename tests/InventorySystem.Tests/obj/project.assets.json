@@ -1488,23 +1488,23 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\Espon\\.nuget\\packages\\": {},
+    "C:\\Users\\Armando\\.nuget\\packages\\": {},
     "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\Espon\\Downloads\\Proyecto-Integrador-PYMES-main\\tests\\InventorySystem.Tests\\InventorySystem.Tests.csproj",
+      "projectUniqueName": "C:\\Users\\Armando\\Documents\\REPO-PYMES\\Proyecto-Integrador-PYMES\\tests\\InventorySystem.Tests\\InventorySystem.Tests.csproj",
       "projectName": "InventorySystem.Tests",
-      "projectPath": "C:\\Users\\Espon\\Downloads\\Proyecto-Integrador-PYMES-main\\tests\\InventorySystem.Tests\\InventorySystem.Tests.csproj",
-      "packagesPath": "C:\\Users\\Espon\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\Espon\\Downloads\\Proyecto-Integrador-PYMES-main\\tests\\InventorySystem.Tests\\obj\\",
+      "projectPath": "C:\\Users\\Armando\\Documents\\REPO-PYMES\\Proyecto-Integrador-PYMES\\tests\\InventorySystem.Tests\\InventorySystem.Tests.csproj",
+      "packagesPath": "C:\\Users\\Armando\\.nuget\\packages\\",
+      "outputPath": "C:\\Users\\Armando\\Documents\\REPO-PYMES\\Proyecto-Integrador-PYMES\\tests\\InventorySystem.Tests\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
       ],
       "configFilePaths": [
-        "C:\\Users\\Espon\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Users\\Armando\\AppData\\Roaming\\NuGet\\NuGet.Config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
       ],
@@ -1521,11 +1521,11 @@
           "framework": "net10.0",
           "targetAlias": "net10.0",
           "projectReferences": {
-            "C:\\Users\\Espon\\Downloads\\Proyecto-Integrador-PYMES-main\\src\\InventorySystem.Domain\\InventorySystem.Domain.csproj": {
-              "projectPath": "C:\\Users\\Espon\\Downloads\\Proyecto-Integrador-PYMES-main\\src\\InventorySystem.Domain\\InventorySystem.Domain.csproj"
+            "C:\\Users\\Armando\\Documents\\REPO-PYMES\\Proyecto-Integrador-PYMES\\src\\InventorySystem.Domain\\InventorySystem.Domain.csproj": {
+              "projectPath": "C:\\Users\\Armando\\Documents\\REPO-PYMES\\Proyecto-Integrador-PYMES\\src\\InventorySystem.Domain\\InventorySystem.Domain.csproj"
             },
-            "C:\\Users\\Espon\\Downloads\\Proyecto-Integrador-PYMES-main\\src\\InventorySystem.Infrastructure\\InventorySystem.Infrastructure.csproj": {
-              "projectPath": "C:\\Users\\Espon\\Downloads\\Proyecto-Integrador-PYMES-main\\src\\InventorySystem.Infrastructure\\InventorySystem.Infrastructure.csproj"
+            "C:\\Users\\Armando\\Documents\\REPO-PYMES\\Proyecto-Integrador-PYMES\\src\\InventorySystem.Infrastructure\\InventorySystem.Infrastructure.csproj": {
+              "projectPath": "C:\\Users\\Armando\\Documents\\REPO-PYMES\\Proyecto-Integrador-PYMES\\src\\InventorySystem.Infrastructure\\InventorySystem.Infrastructure.csproj"
             }
           }
         }
@@ -1540,7 +1540,7 @@
         "auditLevel": "low",
         "auditMode": "all"
       },
-      "SdkAnalysisLevel": "10.0.300"
+      "SdkAnalysisLevel": "10.0.400"
     },
     "frameworks": {
       "net10.0": {
@@ -1578,7 +1578,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.302/PortableRuntimeIdentifierGraph.json",
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.400/PortableRuntimeIdentifierGraph.json",
         "packagesToPrune": {
           "Microsoft.CSharp": "(,4.7.32767]",
           "Microsoft.VisualBasic": "(,10.4.32767]",

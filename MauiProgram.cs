@@ -42,6 +42,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<BusinessService>();
         builder.Services.AddSingleton<InventoryTransactionService>();
         builder.Services.AddSingleton<InventoryLotService>();
+        builder.Services.AddSingleton<InventoryCatalogService>();
         builder.Services.AddSingleton<DashboardService>();
         builder.Services.AddSingleton<BarcodeReadGuard>();
         builder.Services.AddSingleton<BarcodeScannerService>();

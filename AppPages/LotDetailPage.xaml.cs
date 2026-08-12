@@ -15,6 +15,7 @@ public partial class LotDetailPage : ContentPage, IQueryAttributable
     private long _lotId;
     private long _productId;
     private ExpirationMode _expirationMode;
+    private DateOnly? _manufacturingDate;
     private decimal? _unitCost;
 
     public LotDetailPage(
@@ -28,7 +29,6 @@ public partial class LotDetailPage : ContentPage, IQueryAttributable
         _products = products;
         _suppliers = suppliers;
         _businesses = businesses;
-        ManufacturingDatePicker.Date = DateTime.Today;
         ExpirationDatePicker.Date = DateTime.Today.AddDays(30);
     }
 
@@ -47,7 +47,6 @@ public partial class LotDetailPage : ContentPage, IQueryAttributable
         {
             _businessId = (await _businesses.GetDefaultAsync()).Id;
             var suppliers = (await _suppliers.SearchAsync(_businessId, includeInactive: true)).ToList();
-            suppliers.Insert(0, new Supplier { Id = 0, CompanyName = "Sin proveedor" });
             SupplierPicker.ItemsSource = suppliers;
             SupplierPicker.ItemDisplayBinding = new Binding(nameof(Supplier.CompanyName));
             await RefreshAsync();
@@ -71,16 +70,10 @@ public partial class LotDetailPage : ContentPage, IQueryAttributable
         LotSummaryLabel.Text = $"Lote {lot.LotCode ?? "Sin código"} · {lot.EffectiveStatus}";
         CurrentQuantityLabel.Text = $"Disponible actualmente: {lot.Quantity:0.###}";
         LotCodeEntry.Text = lot.LotCode;
+        _manufacturingDate = lot.ManufacturingDate;
         _unitCost = lot.UnitCost;
         UnitCostDisplay.IsVisible = lot.UnitCost.HasValue;
         UnitCostLabel.Text = lot.UnitCost.HasValue ? lot.UnitCost.Value.ToString("C", CultureInfo.CurrentCulture) : string.Empty;
-        HasManufacturingDateCheck.IsChecked = lot.ManufacturingDate.HasValue;
-        ManufacturingDatePicker.IsVisible = lot.ManufacturingDate.HasValue;
-        if (lot.ManufacturingDate.HasValue)
-        {
-            ManufacturingDatePicker.Date = lot.ManufacturingDate.Value.ToDateTime(TimeOnly.MinValue);
-        }
-
         ExpirationField.IsVisible = product.ExpirationMode == ExpirationMode.Tracked;
         if (lot.ExpirationDate.HasValue)
         {
@@ -89,12 +82,11 @@ public partial class LotDetailPage : ContentPage, IQueryAttributable
 
         if (SupplierPicker.ItemsSource is IEnumerable<Supplier> suppliers)
         {
-            SupplierPicker.SelectedItem = suppliers.FirstOrDefault(item => item.Id == (lot.SupplierId ?? 0));
+            SupplierPicker.SelectedItem = lot.SupplierId.HasValue
+                ? suppliers.FirstOrDefault(item => item.Id == lot.SupplierId.Value)
+                : null;
         }
     }
-
-    private void HasManufacturingDateCheck_Changed(object? sender, CheckedChangedEventArgs e) =>
-        ManufacturingDatePicker.IsVisible = e.Value;
 
     private async void SaveLot_Clicked(object? sender, EventArgs e)
     {
@@ -108,9 +100,7 @@ public partial class LotDetailPage : ContentPage, IQueryAttributable
                 new InventoryLotUpdateInput(
                     LotCodeEntry.Text,
                     (SupplierPicker.SelectedItem as Supplier) is { Id: > 0 } supplier ? supplier.Id : null,
-                    HasManufacturingDateCheck.IsChecked
-                        ? DateOnly.FromDateTime(ManufacturingDatePicker.Date ?? DateTime.Today)
-                        : null,
+                    _manufacturingDate,
                     _expirationMode == ExpirationMode.Tracked
                         ? DateOnly.FromDateTime(ExpirationDatePicker.Date ?? DateTime.Today)
                         : null,

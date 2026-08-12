@@ -73,10 +73,12 @@
             <Border Style="{StaticResource Card}">
                 <VerticalStackLayout Spacing="10">
                     <Label Text="Proveedor(es) de este producto" Style="{StaticResource SectionTitle}" />
-                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                    <Grid ColumnDefinitions="*,*,Auto" ColumnSpacing="10">
                         <Picker x:Name="AvailableSupplierPicker" Style="{StaticResource FormPicker}"
                                 Title="Selecciona un proveedor" ItemDisplayBinding="{Binding CompanyName}" />
-                        <Button x:Name="AddSupplierButton" Grid.Column="1" Text="Agregar"
+                        <Entry x:Name="SupplierReferenceCostEntry" Grid.Column="1" Style="{StaticResource FormEntry}"
+                               Keyboard="Numeric" Placeholder="Costo unitario" />
+                        <Button x:Name="AddSupplierButton" Grid.Column="2" Text="Agregar"
                                 Style="{StaticResource SecondaryButton}" Clicked="AddSupplier_Clicked" />
                     </Grid>
                     <CollectionView x:Name="SupplierList" HeightRequest="180" SelectionMode="None">
@@ -86,12 +88,17 @@
                         <CollectionView.ItemTemplate>
                             <DataTemplate>
                                 <Border Style="{StaticResource ListRow}" Margin="0,3">
-                                    <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
-                                        <Label Text="{Binding CompanyName}" FontAttributes="Bold" VerticalOptions="Center" />
-                                        <Button Grid.Column="1" Text="Ver" Style="{StaticResource SecondaryButton}"
-                                                CommandParameter="{Binding .}" Clicked="OpenSupplier_Clicked" />
-                                        <Button Grid.Column="2" Text="Quitar" Style="{StaticResource SecondaryButton}"
-                                                CommandParameter="{Binding .}" Clicked="RemoveSupplier_Clicked" />
+                                    <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="8">
+                                        <VerticalStackLayout Spacing="2" VerticalOptions="Center">
+                                            <Label Text="{Binding Supplier.CompanyName}" FontAttributes="Bold" />
+                                            <Label Text="{Binding DisplayReferenceCost}" Style="{StaticResource HelperText}" />
+                                        </VerticalStackLayout>
+                                        <Button Grid.Column="1" Text="Editar costo" Style="{StaticResource SecondaryButton}"
+                                                CommandParameter="{Binding .}" Clicked="EditSupplierCost_Clicked" />
+                                        <Button Grid.Column="2" Text="Ver" Style="{StaticResource SecondaryButton}"
+                                                CommandParameter="{Binding Supplier}" Clicked="OpenSupplier_Clicked" />
+                                        <Button Grid.Column="3" Text="Quitar" Style="{StaticResource SecondaryButton}"
+                                                CommandParameter="{Binding Supplier}" Clicked="RemoveSupplier_Clicked" />
                                     </Grid>
                                 </Border>
                             </DataTemplate>

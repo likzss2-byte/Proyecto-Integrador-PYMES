@@ -228,6 +228,13 @@ public sealed class ProductSupplier
     public DateTime UpdatedAt { get; set; }
 }
 
+public sealed record SupplierProductCatalogItem(Product Product, decimal? ReferenceCost)
+{
+    public string DisplayReferenceCost => ReferenceCost.HasValue
+        ? $"Costo sugerido: {ReferenceCost.Value:C}"
+        : "Sin costo sugerido";
+}
+
 public sealed class InventoryDocument
 {
     public long Id { get; set; }

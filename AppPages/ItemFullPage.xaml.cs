@@ -124,9 +124,19 @@ public partial class ItemFullPage : ContentPage, IQueryAttributable
         {
             AddSupplierButton.IsEnabled = false;
             DetailErrorLabel.Text = string.Empty;
+            var referenceCost = ParseOptionalDecimal(
+                SupplierReferenceCostEntry.Text,
+                "El costo unitario del proveedor no es válido.")
+                ?? throw new InventoryRuleException("El costo unitario del proveedor es obligatorio.");
+            if (referenceCost < 0)
+            {
+                throw new InventoryRuleException("El costo unitario del proveedor no puede ser negativo.");
+            }
+
             await _suppliers.LinkProductAsync(
                 _businessId,
-                new ProductSupplierInput(_productId, supplier.Id, null, null));
+                new ProductSupplierInput(_productId, supplier.Id, null, referenceCost));
+            SupplierReferenceCostEntry.Text = string.Empty;
             await RefreshSuppliersAsync();
         }
         catch (Exception error)
@@ -150,6 +160,61 @@ public partial class ItemFullPage : ContentPage, IQueryAttributable
         await Shell.Current.GoToAsync(
             nameof(PurveyorContactPage),
             new Dictionary<string, object> { ["SupplierId"] = supplier.Id });
+    }
+
+    private async void EditSupplierCost_Clicked(object? sender, EventArgs e)
+    {
+        if (sender is not Button { CommandParameter: SupplierCostView item } button)
+        {
+            return;
+        }
+
+        try
+        {
+            button.IsEnabled = false;
+            DetailErrorLabel.Text = string.Empty;
+            var value = await DisplayPromptAsync(
+                "Editar costo unitario",
+                $"Captura el costo de {item.Supplier.CompanyName} para este producto.",
+                "Guardar",
+                "Cancelar",
+                "Costo unitario",
+                keyboard: Keyboard.Numeric,
+                initialValue: item.ReferenceCost?.ToString(CultureInfo.CurrentCulture));
+            if (value is null)
+            {
+                return;
+            }
+
+            var referenceCost = ParseOptionalDecimal(
+                value,
+                "El costo unitario del proveedor no es válido.")
+                ?? throw new InventoryRuleException("El costo unitario del proveedor es obligatorio.");
+            if (referenceCost < 0)
+            {
+                throw new InventoryRuleException("El costo unitario del proveedor no puede ser negativo.");
+            }
+
+            await _suppliers.LinkProductAsync(
+                _businessId,
+                new ProductSupplierInput(
+                    _productId,
+                    item.Supplier.Id,
+                    item.SupplierSku,
+                    referenceCost));
+            DetailErrorLabel.Style = (Style)Application.Current!.Resources["InfoText"];
+            DetailErrorLabel.Text = $"Costo de {item.Supplier.CompanyName} actualizado.";
+            await RefreshSuppliersAsync();
+        }
+        catch (Exception error)
+        {
+            DetailErrorLabel.Style = (Style)Application.Current!.Resources["ErrorText"];
+            DetailErrorLabel.Text = error.Message;
+        }
+        finally
+        {
+            button.IsEnabled = true;
+        }
     }
 
     private async void RemoveSupplier_Clicked(object? sender, EventArgs e)
@@ -233,7 +298,12 @@ public partial class ItemFullPage : ContentPage, IQueryAttributable
     private async Task RefreshSuppliersAsync()
     {
         var linked = await _suppliers.GetSuppliersForProductAsync(_businessId, _productId);
-        SupplierList.ItemsSource = linked;
+        var relations = await _suppliers.GetProductSuppliersAsync(_businessId, _productId);
+        SupplierList.ItemsSource = linked
+            .Select(supplier => new SupplierCostView(
+                supplier,
+                relations.FirstOrDefault(relation => relation.SupplierId == supplier.Id)))
+            .ToArray();
 
         var linkedIds = linked.Select(supplier => supplier.Id).ToHashSet();
         var available = (await _suppliers.SearchAsync(_businessId))
@@ -242,6 +312,7 @@ public partial class ItemFullPage : ContentPage, IQueryAttributable
         AvailableSupplierPicker.ItemsSource = available;
         AvailableSupplierPicker.SelectedItem = null;
         AvailableSupplierPicker.IsEnabled = available.Length > 0;
+        SupplierReferenceCostEntry.IsEnabled = available.Length > 0;
         AddSupplierButton.IsEnabled = available.Length > 0;
         AvailableSupplierPicker.Title = available.Length > 0
             ? "Selecciona un proveedor"
@@ -274,4 +345,21 @@ public partial class ItemFullPage : ContentPage, IQueryAttributable
 
     private static decimal? ParseOptionalDecimal(string? value, string message) =>
         string.IsNullOrWhiteSpace(value) ? null : ParseDecimal(value, message);
+
+    private sealed class SupplierCostView
+    {
+        public SupplierCostView(Supplier supplier, ProductSupplier? relation)
+        {
+            Supplier = supplier;
+            SupplierSku = relation?.SupplierSku;
+            ReferenceCost = relation?.ReferenceCost;
+        }
+
+        public Supplier Supplier { get; }
+        public string? SupplierSku { get; }
+        public decimal? ReferenceCost { get; }
+        public string DisplayReferenceCost => ReferenceCost.HasValue
+            ? $"Costo unitario: {ReferenceCost.Value:C}"
+            : "Costo unitario no registrado";
+    }
 }

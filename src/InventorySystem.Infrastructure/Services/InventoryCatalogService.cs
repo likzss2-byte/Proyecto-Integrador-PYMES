@@ -15,12 +15,25 @@ public sealed class InventoryCatalogService
         _products = products;
     }
 
-    public Task<IReadOnlyList<Product>> GetProductsBySupplierAsync(
+    public async Task<IReadOnlyList<Product>> GetProductsBySupplierAsync(
         long businessId,
         long supplierId,
         string? search = null,
         CancellationToken cancellationToken = default) =>
-        _database.ReadAsync<IReadOnlyList<Product>>(connection =>
+        (await GetSupplierProductCatalogAsync(
+            businessId,
+            supplierId,
+            search,
+            cancellationToken).ConfigureAwait(false))
+        .Select(item => item.Product)
+        .ToArray();
+
+    public Task<IReadOnlyList<SupplierProductCatalogItem>> GetSupplierProductCatalogAsync(
+        long businessId,
+        long supplierId,
+        string? search = null,
+        CancellationToken cancellationToken = default) =>
+        _database.ReadAsync<IReadOnlyList<SupplierProductCatalogItem>>(connection =>
         {
             if (connection.ExecuteScalar<int>(
                     "SELECT COUNT(*) FROM suppliers WHERE id=? AND business_id=? AND active=1;",
@@ -37,7 +50,8 @@ public sealed class InventoryCatalogService
                     p.id Id,p.business_id BusinessId,p.sku Sku,p.barcode Barcode,p.name Name,
                     p.description Description,p.brand Brand,p.unit_of_measure UnitOfMeasure,
                     p.stock_milli StockMilli,p.minimum_stock_milli MinimumStockMilli,
-                    p.sale_price_basis SalePriceBasis,p.expiration_mode ExpirationMode,
+                    p.sale_price_basis SalePriceBasis,ps.reference_cost_basis ReferenceCostBasis,
+                    p.expiration_mode ExpirationMode,
                     (SELECT MIN(l.expiration_date) FROM inventory_lots l
                      WHERE l.product_id=p.id AND l.quantity_milli>0 AND l.expiration_date IS NOT NULL) NearestExpirationDate,
                     COALESCE((SELECT SUM(l.quantity_milli) FROM inventory_lots l
@@ -56,7 +70,13 @@ public sealed class InventoryCatalogService
                 term,
                 term,
                 term);
-            return rows.Select(row => row.ToDomain()).ToArray();
+            return rows
+                .Select(row => new SupplierProductCatalogItem(
+                    row.ToDomain(),
+                    row.ReferenceCostBasis.HasValue
+                        ? SqliteValues.FromMoney(row.ReferenceCostBasis.Value)
+                        : null))
+                .ToArray();
         }, cancellationToken);
 
     public Task<IReadOnlyList<string>> GetBrandsAsync(

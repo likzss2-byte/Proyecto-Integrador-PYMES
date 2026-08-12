@@ -15,6 +15,7 @@ internal sealed class ProductRow
     public long StockMilli { get; set; }
     public long MinimumStockMilli { get; set; }
     public long SalePriceBasis { get; set; }
+    public long? ReferenceCostBasis { get; set; }
     public int ExpirationMode { get; set; }
     public string? NearestExpirationDate { get; set; }
     public long UndatedStockMilli { get; set; }

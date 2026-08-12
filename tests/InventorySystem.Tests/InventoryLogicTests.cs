@@ -932,6 +932,25 @@ public sealed class InventoryLogicTests
     }
 
     [Fact]
+    public async Task Catalogo_de_proveedor_devuelve_su_costo_de_referencia()
+    {
+        await using var context = await TestContext.CreateAsync();
+        var supplier = await context.CreateSupplierAsync("Proveedor con costo");
+        var product = await context.CreateProductAsync("COSTO-PROV", barcode: "7501055300075");
+        await context.Suppliers.LinkProductAsync(
+            context.Business.Id,
+            new(product.Id, supplier.Id, null, 18.4567m));
+
+        var item = Assert.Single(await context.Catalog.GetSupplierProductCatalogAsync(
+            context.Business.Id,
+            supplier.Id,
+            "7501055300075"));
+
+        Assert.Equal(product.Id, item.Product.Id);
+        Assert.Equal(18.4567m, item.ReferenceCost);
+    }
+
+    [Fact]
     public async Task Recepcion_con_proveedor_crea_la_relacion_para_su_inventario()
     {
         await using var context = await TestContext.CreateAsync();
